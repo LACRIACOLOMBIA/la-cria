@@ -35,6 +35,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const cop = n => '$' + Math.round(Number(n)||0).toLocaleString('es-CO');
 const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 const catDe = id => CATS.find(c=>c.id===id) || {id, nombre:id, emoji:'🐾', tipos:[], bg:'bg-sp0'};
+const esGratis = p => !!p && (p.id||p)==='gratis';
 const planDe = id => PLANES.find(p=>p.id===id) || {id, nombre:id, precio:0};
 const fotoUrl = p => p ? (p.startsWith('http') ? p : sb.storage.from('fotos').getPublicUrl(p).data.publicUrl) : '';
 const fechaCO = d => d ? new Date(d+(String(d).length===10?'T12:00:00':'')).toLocaleDateString('es-CO',{day:'numeric',month:'short',year:'numeric'}) : '—';
@@ -114,7 +115,8 @@ function pintarAuth(){
   if(!S.sesion){box.innerHTML='<button class="ses" data-login>Iniciar sesión</button><button class="btn btn-p btn-crear" data-go="crear">Crear cuenta</button>';return}
   const panel = esAdmin() ? 'admin' : S.yo ? 'panel' : 'micuenta';
   const enPanel = ['admin','panel','micuenta'].includes(S.view);
-  box.innerHTML=(enPanel?'':`<button class="btn btn-p btn-crear" data-go="${panel}">${esAdmin()?'Panel admin':S.yo?'Mi panel':'Mi cuenta'}</button>`)+'<button class="ses" data-salir>Cerrar sesión</button>';
+  const fa=S.yo&&S.yo.logo||S.perfil&&S.perfil.foto;
+  box.innerHTML=(fa?`<button class="av-h" data-go="${panel}" aria-label="Mi cuenta"><img src="${esc(fotoUrl(fa))}" alt=""></button>`:'')+(enPanel?'':`<button class="btn btn-p btn-crear" data-go="${panel}">${esAdmin()?'Panel admin':S.yo?'Mi panel':'Mi cuenta'}</button>`)+'<button class="ses" data-salir>Cerrar sesión</button>';
 }
 function pintarCampana(){
   const b=$('#campana'); b.style.display=S.sesion?'':'none'; if(!S.sesion) return;
@@ -134,7 +136,7 @@ async function render(){
 /* =====================================================================
    VISTAS PÚBLICAS
    ===================================================================== */
-const SELECT_PUB = '*, vendedor:vendedores(id,nombre_publico,plan,departamento,municipio,verificado,oficial,whatsapp,estado)';
+const SELECT_PUB = '*, vendedor:vendedores(id,nombre_publico,plan,departamento,municipio,verificado,oficial,whatsapp,estado,logo)';
 function sellos(v){const pl=planDe(v.plan);const s={ocasional:'Vendedor verificado',criadero:'Criadero registrado',hacienda:'Hacienda registrada',fundacion:'Fundación verificada',adopcion:'Particular verificado'}[v.plan]||'Verificado';return (v.oficial?'<span class="sello-o">★ Tienda oficial</span> ':'')+(v.verificado?`<span class="sello-v">✓ ${s}</span>`:'')}
 function vendTipo(v){return ['ocasional','adopcion'].includes(v.plan)?'particular':v.plan==='fundacion'?'fundacion':'profesional'}
 function tarjeta(p){
@@ -149,7 +151,7 @@ function tarjeta(p){
 async function vInicio(){
   const [{data:dest},{data:vend}]=await Promise.all([
     sb.from('publicaciones').select(SELECT_PUB).eq('estado','activo').order('destacado',{ascending:false}).order('created_at',{ascending:false}).limit(8),
-    sb.from('vendedores').select('id,nombre_publico,plan,departamento,municipio,verificado,oficial').eq('estado','activo').limit(6)]);
+    sb.from('vendedores').select('id,nombre_publico,plan,departamento,municipio,verificado,oficial,logo').eq('estado','activo').limit(6)]);
   const pop=['bovino','porcino','equino','canino','felino','bufalino','ovino','caprino','conejo','gallinas','abeja','peces'].map(catDe).filter(c=>c.activa!==false);
   const ban=BANNERS.filter(b=>b.ubicacion==='inicio');
   return `
@@ -178,7 +180,8 @@ async function vInicio(){
 }
 function bannersHtml(list){const enl=l=>{l=(l||'').trim();if(!l)return'';const d=l.replace(/\D/g,'');if(!/[a-z]/i.test(l)&&d.length>=7)return'https://wa.me/'+(d.length===10?'57'+d:d);return/^https?:\/\//i.test(l)?l:'https://'+l};
   return `<div class="banners">${list.map(x=>`<div class="banner-ad" style="background:${esc(x.color||'#2F5A42')}"><span class="em">${esc(x.emoji||'📣')}</span><div style="flex:1"><small>Publicidad · ${esc(x.anunciante)}</small><b>${esc(x.texto)}</b></div>${enl(x.enlace)?`<a class="btn btn-s" style="background:#fff;color:${esc(x.color)};text-decoration:none" href="${esc(enl(x.enlace))}" target="_blank" rel="noopener sponsored">${esc(x.boton||'Ver más')}</a>`:''}</div>`).join('')}</div>`}
-function crc(v){return `<button class="crc" data-vend="${v.id}"><div class="av">${planDe(v.plan).emoji||'🐾'}</div><div><b>${esc(v.nombre_publico)}</b><small>${esc(v.municipio||'')}${v.municipio?', ':''}${esc(v.departamento||'')}</small><div style="margin-top:5px">${sellos(v)}</div></div></button>`}
+const avatar = (v,emoji) => v&&v.logo ? `<img src="${esc(fotoUrl(v.logo))}" alt="">` : (emoji||planDe(v&&v.plan).emoji||'🐾');
+function crc(v){return `<button class="crc" data-vend="${v.id}"><div class="av">${avatar(v)}</div><div><b>${esc(v.nombre_publico)}</b><small>${esc(v.municipio||'')}${v.municipio?', ':''}${esc(v.departamento||'')}</small><div style="margin-top:5px">${sellos(v)}</div></div></button>`}
 
 async function vCategorias(){
   return `<div class="wrap" style="padding:34px 20px"><div class="tit"><div><h2>Todas las categorías</h2><p>Elige una categoría para ver sus razas y publicaciones.</p></div></div>
@@ -249,7 +252,7 @@ async function vAnimal(){
     ${waN?`<a class="btn btn-wa" style="width:100%;text-decoration:none" href="https://wa.me/${waN}?text=${txt}" target="_blank" rel="noopener">💬 ${adop?'Preguntar por la adopción':'Escribir por WhatsApp'}</a>`:''}
     <div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-o btn-s" style="flex:1" data-vend="${v.id}">Ver vendedor</button><button class="btn btn-o btn-s" style="flex:1" data-fav="${p.id}">${fav?'♥ Guardado':'♡ Guardar'}</button><button class="btn btn-o btn-s" style="flex:1" data-compartir="${p.id}">🔗 Compartir</button></div>
     <button style="margin-top:12px;font-size:13px;color:var(--gris);text-decoration:underline" data-reportar="${p.id}">Reportar esta publicación</button></div>
-    <button class="panel crc" style="width:100%;margin-top:14px" data-vend="${v.id}"><div class="av">${planDe(v.plan).emoji||'🐾'}</div><div><b>${esc(v.nombre_publico)}</b><div style="margin-top:5px">${sellos(v)}</div></div></button>
+    <button class="panel crc" style="width:100%;margin-top:14px" data-vend="${v.id}"><div class="av">${avatar(v)}</div><div><b>${esc(v.nombre_publico)}</b><div style="margin-top:5px">${sellos(v)}</div></div></button>
     <div class="aviso" style="background:#EEF5F0;border-color:#C8DFCF">🛡️ <b>Compra segura:</b> visita al vendedor o pide videollamada antes de pagar. Nunca pagues por un animal que no has visto.</div>
     <p style="font-size:12px;color:var(--gris)">El sello de verificación de La Cría es una revisión interna de documentos y no equivale a una certificación oficial.</p></div></div></div>`;
 }
@@ -259,7 +262,7 @@ async function vVendedor(){
   if(!v) return `<div class="wrap"><div class="vacio" style="margin:40px 0">Este vendedor no está disponible.</div></div>`;
   const wa=(v.whatsapp||'').replace(/\D/g,''), waN=wa.length===10?'57'+wa:wa;
   return `<div class="portada"><span>${planDe(v.plan).emoji||'🐾'}</span></div><div class="wrap">
-    <div class="perfil-cab"><div class="av">${planDe(v.plan).emoji||'🐾'}</div><div style="padding-bottom:6px"><div style="margin-bottom:6px">${sellos(v)}</div><h1>${esc(v.nombre_publico)}</h1><div style="color:var(--gris)">📍 ${esc(v.municipio||'')}${v.municipio?', ':''}${esc(v.departamento||'')}${v.anios?` · ${v.anios} años`:''}</div></div>
+    <div class="perfil-cab"><div class="av">${avatar(v)}</div><div style="padding-bottom:6px"><div style="margin-bottom:6px">${sellos(v)}</div><h1>${esc(v.nombre_publico)}</h1><div style="color:var(--gris)">📍 ${esc(v.municipio||'')}${v.municipio?', ':''}${esc(v.departamento||'')}${v.anios?` · ${v.anios} años`:''}</div></div>
       <div style="margin-left:auto;display:flex;gap:8px;padding-bottom:6px">${waN?`<a class="btn btn-wa" style="text-decoration:none" href="https://wa.me/${waN}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}<button class="btn btn-o" data-compartir-v="${v.id}">🔗 Compartir</button></div></div>
     <div class="perfil-datos"><div class="panel"><h3 class="serif" style="color:var(--verde);margin-bottom:8px">Sobre ${v.plan==='fundacion'?'la fundación':'el vendedor'}</h3><p style="white-space:pre-line">${esc(v.descripcion||'')}</p>
       <div style="margin-top:14px;display:flex;gap:6px;flex-wrap:wrap">${(v.especies||[]).map(x=>`<span class="tag" style="background:var(--crema)">${catDe(x).emoji} ${esc(catDe(x).nombre)}</span>`).join('')}</div></div>
@@ -268,15 +271,15 @@ async function vVendedor(){
     <div class="grid" style="margin-bottom:40px">${(pubs||[]).map(tarjeta).join('')||'<div class="vacio">Aún no tiene publicaciones activas.</div>'}</div></div>`;
 }
 async function vVendedores(){
-  const {data}=await sb.from('vendedores').select('id,nombre_publico,plan,departamento,municipio,verificado,oficial').eq('estado','activo').order('oficial',{ascending:false});
+  const {data}=await sb.from('vendedores').select('id,nombre_publico,plan,departamento,municipio,verificado,oficial,logo').eq('estado','activo').order('oficial',{ascending:false});
   return `<div class="wrap" style="padding:34px 20px"><div class="tit"><div><h2>Vendedores verificados</h2><p>Criaderos, haciendas, fundaciones y particulares que pasaron revisión de documentos.</p></div></div><div class="criaderos">${(data||[]).map(crc).join('')||'<div class="vacio">Muy pronto.</div>'}</div></div>`;
 }
 
 async function vPlanes(){
   const venta=PLANES.filter(p=>!p.adopcion), adop=PLANES.filter(p=>p.adopcion);
-  const card=p=>`<div class="plan ${p.id==='criadero'?'pop':''}"><div style="font-size:34px">${p.emoji}</div><h3>Plan ${esc(p.nombre)}</h3><div class="val">${cop(p.precio)}<small>${p.pago_unico?' por publicación':' / mes'}</small></div>
+  const card=p=>`<div class="plan ${p.id==='criadero'?'pop':''}"><div style="font-size:34px">${p.emoji}</div><h3>Plan ${esc(p.nombre)}</h3><div class="val">${esGratis(p)?'Gratis':cop(p.precio)}<small>${esGratis(p)?' 30 días':p.pago_unico?' por publicación':' / mes'}</small></div>
     ${['criadero','hacienda'].includes(p.id)?`<small style="color:var(--ok);font-weight:700">o ${cop(p.precio*10)} al año (2 meses gratis)</small>`:'<small>&nbsp;</small>'}
-    <ul>${({ocasional:['1 publicación activa por 60 días','Para personas sin criadero registrado','Máximo 2 publicaciones al año','Todas las especies permitidas'],criadero:['Hasta 40 publicaciones activas','Perfil de criadero con redes y WhatsApp','Hasta 3 especies','3 destacados al mes'],hacienda:['Publicaciones ilimitadas','Todas las especies','10 destacados al mes','Varias fincas o sedes'],adopcion:['1 publicación por 60 días (1 o 2 animales)','Para personas que no son fundación','Sin costo para quien adopta','Máximo 2 al año'],fundacion:['Hasta 40 animales en adopción','Perfil de fundación','Botón de donaciones','Para entidades legalmente constituidas']}[p.id]||[]).map(i=>`<li>${i}</li>`).join('')}</ul>
+    <ul>${({gratis:['1 publicación activa por 30 días','Sin pagar nada','Los compradores te contactan por WhatsApp','Panel básico para publicar'],ocasional:['1 publicación activa por 60 días','Para personas sin criadero registrado','Máximo 2 publicaciones al año','Todas las especies permitidas'],criadero:['Hasta 40 publicaciones activas','Perfil de criadero con redes y WhatsApp','Hasta 3 especies','3 destacados al mes'],hacienda:['Publicaciones ilimitadas','Todas las especies','10 destacados al mes','Varias fincas o sedes'],adopcion:['1 publicación por 60 días (1 o 2 animales)','Para personas que no son fundación','Sin costo para quien adopta','Máximo 2 al año'],fundacion:['Hasta 40 animales en adopción','Perfil de fundación','Botón de donaciones','Para entidades legalmente constituidas']}[p.id]||[]).map(i=>`<li>${i}</li>`).join('')}</ul>
     <button class="btn ${p.adopcion?'':'btn-p'}" ${p.adopcion?'style="background:#7A4E8C;color:#fff"':''} data-elegir="${p.id}">Elegir plan ${esc(p.nombre)}</button></div>`;
   return `<div class="wrap" style="padding:44px 20px;text-align:center"><h1 class="serif" style="font-size:clamp(32px,4.5vw,50px);color:var(--verde)">Planes de La Cría</h1><p style="color:var(--gris);max-width:620px;margin:10px auto 24px">Sin comisiones: el comprador le paga directo al vendedor. Solo pagas tu plan por Bre-B.</p>
     <div class="planes" style="text-align:left">${venta.map(card).join('')}</div>
@@ -333,6 +336,15 @@ async function crearCuenta(){
   else modal(`<div style="text-align:center"><div style="font-size:52px">📧</div><h3>Revisa tu correo</h3><p style="color:var(--gris);margin-top:8px">Te enviamos un enlace a <b>${esc(c)}</b> para confirmar tu cuenta. Ábrelo y listo, ya puedes entrar. Revisa también la carpeta de spam.</p></div>`);
 }
 
+function cajaFoto(actual,tipo){
+  const vend=tipo==='logo';
+  return `<div class="caja foto-perfil"><div class="av av-g">${actual?`<img src="${esc(fotoUrl(actual))}" alt="">`:(vend?'🏡':'👤')}</div>
+    <div style="flex:1;min-width:200px"><b>${vend?'Logo o foto de tu perfil':'Tu foto de perfil'}</b><p style="color:var(--gris);font-size:14px;margin:4px 0 10px">${vend?'Aparece en tu perfil público, en tus publicaciones y en la lista de vendedores. Usa tu logo o una foto tuya o de tus animales.':'Así te verán los vendedores cuando les escribas.'}</p>
+    <label class="btn btn-o btn-s" style="display:inline-block;cursor:pointer">⬆ ${actual?'Cambiar':'Subir'} ${vend?'logo o foto':'foto'}<input type="file" hidden accept="image/*" data-subiravatar="${tipo}"></label>${actual?` <button class="btn btn-o btn-s" style="color:var(--mal)" data-quitaravatar="${tipo}">Quitar</button>`:''}
+    <small style="display:block;margin-top:6px;color:var(--gris)">Foto cuadrada se ve mejor · JPG o PNG · máximo 10 MB</small></div></div>`;
+}
+/* recorta la imagen en cuadrado y la reduce para que cargue rápido */
+function fotoCuadrada(file,lado=600){return new Promise((ok,fail)=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const m=Math.min(img.width,img.height),c=document.createElement('canvas');c.width=c.height=Math.min(lado,m);c.getContext('2d').drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,c.width,c.height);c.toBlob(b=>{URL.revokeObjectURL(u);b?ok(new File([b],'perfil.jpg',{type:'image/jpeg'})):fail(new Error('No se pudo procesar la imagen'))},'image/jpeg',.88)};img.onerror=()=>fail(new Error('Archivo de imagen no válido'));img.src=u})}
 function vSeguridad(){
   const correo=S.sesion?S.sesion.user.email:'';
   return `<div class="caja"><b>🔐 Correo y contraseña</b><p style="font-size:13.5px;color:var(--gris);margin:4px 0 12px">Para cambiar la contraseña te enviamos un código a tu correo. No necesitas la contraseña actual.</p>
@@ -349,10 +361,10 @@ async function vMiCuenta(){
   const t=S.sub==='seguridad'||S.sub==='favs'||S.sub==='datos'?S.sub:'favs';
   let body='';
   if(t==='favs'){const {data}=await sb.from('favoritos').select('publicacion_id, publicaciones('+SELECT_PUB+')').order('created_at',{ascending:false});const l=(data||[]).map(x=>x.publicaciones).filter(Boolean);body=l.length?`<div class="grid">${l.map(tarjeta).join('')}</div>`:'<div class="vacio">Toca “♡ Guardar” en un animal para verlo aquí.</div>'}
-  if(t==='datos'){const p=S.perfil||{};body=`<div class="caja form-g"><div class="f"><label>Nombre</label><input class="campo" id="md-n" value="${esc(p.nombre)}"></div><div class="f"><label>Celular</label><input class="campo" id="md-w" value="${esc(p.whatsapp)}"></div><div class="f"><label>Departamento</label><select class="campo" id="md-d">${DEPTOS.map(d=>`<option ${p.departamento===d?'selected':''}>${d}</option>`).join('')}</select></div><div class="full" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><button class="btn btn-o btn-s" data-go="planes">🐾 Quiero vender o dar en adopción</button><button class="btn btn-p btn-s" data-guardardatos>Guardar</button></div></div>`}
+  if(t==='datos'){const p=S.perfil||{};body=cajaFoto(p.foto,'foto')+`<div class="caja form-g"><div class="f"><label>Nombre</label><input class="campo" id="md-n" value="${esc(p.nombre)}"></div><div class="f"><label>Celular</label><input class="campo" id="md-w" value="${esc(p.whatsapp)}"></div><div class="f"><label>Departamento</label><select class="campo" id="md-d">${DEPTOS.map(d=>`<option ${p.departamento===d?'selected':''}>${d}</option>`).join('')}</select></div><div class="full" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><button class="btn btn-o btn-s" data-go="planes">🐾 Quiero vender o dar en adopción</button><button class="btn btn-p btn-s" data-guardardatos>Guardar</button></div></div>`}
   if(t==='seguridad') body=vSeguridad();
   const tabs=[['favs','♡','Favoritos'],['datos','👤','Mis datos'],['seguridad','🔐','Correo y contraseña']];
-  return `<div class="wrap"><div class="dash"><aside class="side"><div class="quien"><b>${esc((S.perfil||{}).nombre||'Mi cuenta')}</b><small>Cuenta gratis</small></div>${tabs.map(([k,i,n])=>`<button class="${t===k?'on':''}" data-sub="${k}"><span class="ic">${i}</span><span class="tx">${n}</span></button>`).join('')}<button data-salir><span class="ic">🚪</span><span class="tx">Cerrar sesión</span></button></aside><div><div class="h-dash"><h2>${tabs.find(x=>x[0]===t)[2]}</h2></div>${body}</div></div></div>`;
+  return `<div class="wrap"><div class="dash"><aside class="side"><div class="quien quien-av"><div class="av av-s">${S.perfil&&S.perfil.foto?`<img src="${esc(fotoUrl(S.perfil.foto))}" alt="">`:'👤'}</div><div><b>${esc((S.perfil||{}).nombre||'Mi cuenta')}</b><small>Cuenta gratis</small></div></div>${tabs.map(([k,i,n])=>`<button class="${t===k?'on':''}" data-sub="${k}"><span class="ic">${i}</span><span class="tx">${n}</span></button>`).join('')}<button data-salir><span class="ic">🚪</span><span class="tx">Cerrar sesión</span></button></aside><div><div class="h-dash"><h2>${tabs.find(x=>x[0]===t)[2]}</h2></div>${body}</div></div></div>`;
 }
 
 /* =====================================================================
@@ -364,7 +376,7 @@ async function vRegistro(){
   const up=(k,t)=>cajaArchivo(k,t,k==='fotos');
   let cuerpo='';
   if(R.paso===1) cuerpo=`<h2 class="serif" style="color:var(--verde)">¿Qué plan quieres?</h2><p style="color:var(--gris);margin-bottom:14px">Elige el que más se parece a ti.</p>
-    <div style="display:flex;flex-direction:column;gap:10px">${PLANES.map(x=>`<button class="crc" style="border-width:2px;${R.plan===x.id?'border-color:var(--terra);background:#FDF3EE':''}" data-regplan="${x.id}"><div class="av">${x.emoji}</div><div style="flex:1"><b>Plan ${esc(x.nombre)}</b></div><b>${cop(x.precio)}<small style="display:block;text-align:right">${x.pago_unico?'por publicación':'/ mes'}</small></b></button>`).join('')}</div>
+    <div style="display:flex;flex-direction:column;gap:10px">${PLANES.map(x=>`<button class="crc" style="border-width:2px;${R.plan===x.id?'border-color:var(--terra);background:#FDF3EE':''}" data-regplan="${x.id}"><div class="av">${x.emoji}</div><div style="flex:1"><b>Plan ${esc(x.nombre)}</b></div><b>${esGratis(x)?'Gratis':cop(x.precio)}<small style="display:block;text-align:right">${esGratis(x)?'30 días':x.pago_unico?'por publicación':'/ mes'}</small></b></button>`).join('')}</div>
     ${['criadero','hacienda'].includes(R.plan)?`<div class="panel" style="margin-top:14px;background:var(--crema)"><b>¿Cómo quieres pagar?</b><div class="opc-plan" style="grid-template-columns:1fr 1fr;margin-top:10px"><button class="${!R.anual?'on':''}" data-reganual="0"><b>Mensual</b>${cop(pl.precio)} cada mes</button><button class="${R.anual?'on':''}" data-reganual="1"><b>Anual · 2 meses gratis</b>${cop(pl.precio*10)} por 12 meses</button></div></div>`:''}`;
   if(R.paso===3) cuerpo=`<h2 class="serif" style="color:var(--verde)">${fu?'Datos de la fundación':oc?'Tus datos públicos':'Datos del criadero'}</h2><p style="color:var(--gris);margin-bottom:16px">Así te verán los compradores.</p>
     <div class="form-g"><div class="f full"><label>${fu?'Nombre de la fundación':oc?'Nombre que verán los compradores':'Nombre del criadero o hacienda'}</label><input class="campo" id="r-nom" value="${esc(R.nom||'')}"></div>
@@ -389,8 +401,8 @@ async function vRegistro(){
   if(R.paso===2) cuerpo=`<h2 class="serif" style="color:var(--verde)">Paga tu plan ${esc(pl.nombre)}</h2><p style="color:var(--gris);margin-bottom:16px">Primero paga tu plan por Bre-B y sube el pantallazo. Después llenas tus datos y documentos.</p>
     ${bloquePago(cop(valor),R.anual?'un solo pago por 12 meses':pl.pago_unico?'la publicación dura 60 días':'mensual','comp')}
     <p style="font-size:13px;color:var(--gris);margin-top:12px">🔒 Tu pago queda guardado con tu solicitud. Revisamos el pago y tus documentos juntos en máximo ${esc(CONFIG.horas_activacion||24)} horas.</p>`;
-  return `<div class="wrap"><div class="reg"><div class="progreso">${[1,2,3,4].map(i=>`<div class="${i<=R.paso?'on':''}"></div>`).join('')}</div><small style="color:var(--gris);font-weight:700">PASO ${R.paso} DE 4 · ${['','Tu plan','Pago','Tus datos','Documentos'][R.paso]}</small>${cuerpo}
-    <div class="pie-form">${R.paso>1?'<button class="btn btn-o" data-regpaso="-1">← Atrás</button>':'<span></span>'}<button class="btn btn-p" data-regpaso="1" id="regsig">${R.paso===4?'Enviar solicitud':R.paso===1?'Continuar al pago →':R.paso===2?'Ya pagué, continuar →':'Continuar →'}</button></div></div></div>`;
+  return `<div class="wrap"><div class="reg"><div class="progreso">${[1,2,3,4].map(i=>`<div class="${i<=R.paso?'on':''}"></div>`).join('')}</div><small style="color:var(--gris);font-weight:700">${esGratis(pl)?`PASO ${[0,1,1,2,3][R.paso]} DE 3`:`PASO ${R.paso} DE 4`} · ${['','Tu plan','Pago','Tus datos','Documentos'][R.paso]}</small>${cuerpo}
+    <div class="pie-form">${R.paso>1?'<button class="btn btn-o" data-regpaso="-1">← Atrás</button>':'<span></span>'}<button class="btn btn-p" data-regpaso="1" id="regsig">${R.paso===4?'Enviar solicitud':R.paso===1?(esGratis(pl)?'Continuar →':'Continuar al pago →'):R.paso===2?'Ya pagué, continuar →':'Continuar →'}</button></div></div></div>`;
 }
 const ARCH_MAX={fotos:6};
 function listaArch(k){const v=S.reg.arch[k];return !v?[]:Array.isArray(v)?v:[v]}
@@ -432,7 +444,8 @@ function guardarPasoReg(){
 }
 async function enviarRegistro(){
   const R=S.reg, pl=planDe(R.plan);
-  if(!R.arch.comp){toast('Sube el comprobante de pago');return}
+  const gratis=esGratis(pl);
+  if(!gratis&&!R.arch.comp){toast('Sube el comprobante de pago');return}
   const btn=$('#regsig'); btn.disabled=true; btn.textContent='Enviando…';
   S.enviando=true;
   try{
@@ -447,11 +460,11 @@ async function enviarRegistro(){
     const uid=S.sesion.user.id;
     const docs={};
     for(const [k,f] of Object.entries(R.arch)){ if(k==='comp') continue; if(Array.isArray(f)){docs[k]=[];for(const x of f)docs[k].push(await subir('documentos',uid,x))} else docs[k]=await subir('documentos',uid,f); }
-    const comp=await subir('comprobantes',uid,Array.isArray(R.arch.comp)?R.arch.comp[0]:R.arch.comp);
+    const comp=gratis?null:await subir('comprobantes',uid,Array.isArray(R.arch.comp)?R.arch.comp[0]:R.arch.comp);
     let r=await sb.from('vendedores').insert({id:uid,nombre_publico:R.nom,plan:R.plan,pago_anual:!!R.anual,departamento:R.dep,municipio:R.mun,whatsapp:R.wa,instagram:R.ig||null,anios:R.an?Number(R.an):null,especies:R.esp,descripcion:R.desc});
     if(r.error) throw r.error;
     r=await sb.from('vendedores_privado').upsert({id:uid,tipo_documento:R.td,numero_documento:R.nd,direccion_notificaciones:R.dir,telefono:R.wa,documentos:docs}); if(r.error) throw r.error;
-    r=await sb.from('pagos').insert({vendedor_id:uid,plan:R.plan,pago_anual:!!R.anual,valor:R.anual?pl.precio*10:pl.precio,comprobante:comp}); if(r.error) throw r.error;
+    if(!gratis) r=await sb.from('pagos').insert({vendedor_id:uid,plan:R.plan,pago_anual:!!R.anual,valor:R.anual?pl.precio*10:pl.precio,comprobante:comp}); if(r.error) throw r.error;
     await sb.from('aceptaciones').insert({usuario_id:uid,tipo:pl.adopcion?'Adopción':'Vendedor',documentos:'Términos · Datos · Reglas · '+(pl.adopcion?'Condiciones de adopción':'Condiciones para vendedores')+' · Declaración art. 53'});
     if(R.pas)await sb.from('aceptaciones').insert({usuario_id:uid,tipo:'Cuenta',documentos:'Términos · Datos personales · Aviso de privacidad · Mayor de 18'});
     S.reg={paso:1,plan:'criadero',anual:false,esp:[],arch:{}};S.enviando=false;
@@ -466,7 +479,7 @@ async function enviarRegistro(){
 function menuLateral(tabs,t){return tabs.map(([k,i,n,b])=>k==='§'?`<div class="side-sec">${i}</div>`:`<button class="${t===k?'on':''}" data-sub="${k}"><span class="ic">${i}</span><span class="tx">${n}</span>${b?`<span class="badge">${b}</span>`:''}</button>`).join('')}
 async function vPanel(){
   if(!S.sesion) return vCrear(); if(esAdmin()&&!S.yo) return vAdmin(); if(!S.yo) return vRegistro();
-  const v=S.yo, pl=planDe(v.plan), adop=pl.adopcion;
+  const v=S.yo, pl=planDe(v.plan), adop=pl.adopcion, gratis=esGratis(pl);
   const {data:pubs}=await sb.from('publicaciones').select('*').eq('vendedor_id',v.id).order('created_at',{ascending:false});
   const activas=(pubs||[]).filter(p=>['activo','revision'].includes(p.estado));
   const lim=v.oficial?9999:(pl.max_publicaciones??9999), limDest=v.oficial?10:(pl.max_destacados||0);
@@ -475,26 +488,36 @@ async function vPanel(){
   const est={pendiente:['En revisión','e-pend'],activo:['Activa','e-ok'],vencido:['Plan vencido','e-pend'],sancionado:['Suspendida','e-mal'],bloqueado:['Bloqueada','e-mal'],rechazado:['Rechazada','e-mal']}[v.estado]||['—','e-gris'];
   if(v.estado!=='activo'&&t!=='plan'&&t!=='seguridad'&&t!=='perfil'){
     body=`<div class="h-dash"><h2>Hola, ${esc(v.nombre_publico)}</h2></div><div class="caja" style="text-align:center;padding:40px"><div style="font-size:52px">${v.estado==='pendiente'?'⏳':'⚠️'}</div><h3 class="serif" style="color:var(--verde);font-size:26px;margin:8px 0">Tu cuenta está: <span class="estado ${est[1]}">${est[0]}</span></h3>
-      <p style="color:var(--gris);max-width:480px;margin:0 auto">${v.estado==='pendiente'?`Estamos revisando tus documentos y tu pago. Te avisamos en máximo ${esc(CONFIG.horas_activacion||24)} horas.`:v.estado==='vencido'?'Tu plan venció y tus publicaciones están ocultas. Renueva tu plan para volver a mostrarlas.':v.estado==='rechazado'?'Tu solicitud no fue aprobada. Escríbenos desde Ayuda para saber qué falta.':'Tu cuenta tiene una restricción. Escríbenos desde Ayuda.'}</p>
-      ${v.estado==='vencido'?'<button class="btn btn-p" style="margin-top:14px" data-sub="plan">Renovar plan</button>':''}</div>`;
-  } else if(t==='resumen') body=`<div class="h-dash"><h2>Hola, ${esc(v.nombre_publico)} 👋</h2><button class="btn btn-p btn-s" data-sub="nueva">➕ Publicar</button></div>
+      <p style="color:var(--gris);max-width:480px;margin:0 auto">${v.estado==='pendiente'?`Estamos revisando tus documentos${gratis?'':' y tu pago'}. Te avisamos en máximo ${esc(CONFIG.horas_activacion||24)} horas.`:v.estado==='vencido'?(gratis?'Tus 30 días gratis terminaron y tu publicación está oculta. Elige un plan para seguir publicando.':'Tu plan venció y tus publicaciones están ocultas. Renueva tu plan para volver a mostrarlas.'):v.estado==='rechazado'?'Tu solicitud no fue aprobada. Escríbenos desde Ayuda para saber qué falta.':'Tu cuenta tiene una restricción. Escríbenos desde Ayuda.'}</p>
+      ${v.estado==='vencido'?`<button class="btn btn-p" style="margin-top:14px" data-sub="plan">${gratis?'Elegir un plan':'Renovar plan'}</button>`:''}</div>`;
+  } else if(t==='resumen'&&gratis) body=`<div class="h-dash"><h2>Hola, ${esc(v.nombre_publico)} 👋</h2></div>
+      <div class="caja"><b>🌱 Plan Gratis</b><p style="color:var(--gris);margin:4px 0 12px">Tienes ${activas.length} de 1 publicación activa. Tu plan gratis vence el ${fechaCO(v.vence)}. Los compradores te contactan por el WhatsApp que pusiste en <button class="link" data-sub="perfil">Mi perfil</button>.</p>${activas.length?'<button class="btn btn-o btn-s" data-sub="pubs">Ver mi publicación</button>':'<button class="btn btn-p" data-sub="nueva">➕ Publicar mi animal</button>'}</div>
+      <div class="caja" style="background:var(--crema)"><b>¿Quieres más?</b><p style="color:var(--gris);font-size:14.5px;margin:4px 0 12px">Con un plan pago publicas más animales, destacas tus publicaciones y tienes perfil completo con redes.</p><button class="btn btn-p btn-s" data-sub="plan">Ver planes</button></div>`;
+  else if(t==='resumen') body=`<div class="h-dash"><h2>Hola, ${esc(v.nombre_publico)} 👋</h2><button class="btn btn-p btn-s" data-sub="nueva">➕ Publicar</button></div>
       <div class="kpis"><div class="kpi"><small>Publicaciones activas</small><b>${activas.length}</b><span style="color:var(--gris)">${lim>999?'Ilimitadas':'de '+lim}</span></div><div class="kpi"><small>En revisión</small><b>${(pubs||[]).filter(p=>p.estado==='revision').length}</b></div><div class="kpi"><small>Destacados</small><b>${(pubs||[]).filter(p=>p.destacado).length}/${limDest}</b></div><div class="kpi"><small>Plan</small><b style="font-size:20px">${esc(pl.nombre)}</b><span style="color:var(--gris)">vence ${fechaCO(v.vence)}</span></div></div>
       <div class="aviso">💡 Los mensajes, la agenda de visitas y las estadísticas llegan en la próxima actualización de La Cría. Mientras tanto, los compradores te escriben por WhatsApp.</div>`;
   else if(t==='pubs') body=`<div class="h-dash"><h2>${adop?'Animales en adopción':'Mis publicaciones'}</h2><button class="btn btn-p btn-s" data-sub="nueva">➕ Nueva</button></div>
       ${(pubs||[]).length?`<table class="tabla"><tr><th>Animal</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr>${pubs.map(p=>{const e={activo:['Disponible','e-ok'],revision:['En revisión','e-pend'],vendido:['Vendido','e-gris'],adoptado:['Adoptado','e-ok'],pausado:['Pausado','e-gris'],rechazado:['Rechazado','e-mal'],vencido:['Vencido','e-gris']}[p.estado]||['—','e-gris'];return `<tr><td><b>${catDe(p.categoria_id).emoji} ${esc(p.titulo)}</b><br><small style="color:var(--gris)">${esc(p.raza||'')}</small></td><td>${precioTxt(p)}</td><td><span class="estado ${e[1]}">${e[0]}</span></td>
         <td class="acciones">${limDest&&p.estado==='activo'?`<button class="btn btn-o btn-s" data-destacar="${p.id}" data-val="${p.destacado?0:1}">${p.destacado?'★ Quitar destacado':'☆ Destacar'}</button>`:''}${['activo','pausado'].includes(p.estado)?`<button class="btn btn-o btn-s" data-pubest="${p.id}" data-val="${adop?'adoptado':'vendido'}">${adop?'Marcar adoptado':'Marcar vendido'}</button>`:''}${['vendido','adoptado'].includes(p.estado)?`<button class="btn btn-o btn-s" data-pubest="${p.id}" data-val="activo">Reactivar</button>`:''}${p.estado==='activo'?`<button class="btn btn-o btn-s" data-animal="${p.id}">Ver</button>`:''}<button class="btn btn-o btn-s" style="color:var(--mal)" data-pubdel="${p.id}">Eliminar</button></td></tr>`}).join('')}</table>`:'<div class="vacio">Aún no tienes publicaciones. ¡Publica tu primer animal!</div>'}`;
   else if(t==='nueva') body = activas.length>=lim ? `<div class="h-dash"><h2>Publicar</h2></div><div class="caja"><h3 class="serif" style="color:var(--verde)">Llegaste al límite de tu plan</h3><p style="margin:8px 0 14px">Tu plan ${esc(pl.nombre)} permite ${lim} ${lim===1?'publicación activa':'publicaciones activas'}. ${pl.pago_unico?'Para publicar otra, paga una nueva publicación desde “Mi plan”.':'Marca como vendidas las que ya no estén disponibles o cambia de plan.'}</p><button class="btn btn-p" data-sub="plan">Ir a Mi plan</button></div>` : vPublicar(v,pl);
-  else if(t==='perfil') body=`<div class="h-dash"><h2>Mi perfil</h2><button class="btn btn-o btn-s" data-vend="${v.id}">Ver como comprador</button></div><div class="caja form-g">
-      <div class="f full"><label>Nombre público</label><input class="campo" id="pf-n" value="${esc(v.nombre_publico)}"></div><div class="f"><label>WhatsApp</label><input class="campo" id="pf-w" value="${esc(v.whatsapp)}"></div><div class="f"><label>Instagram</label><input class="campo" id="pf-i" value="${esc(v.instagram)}"></div>
+  else if(t==='perfil') body=`<div class="h-dash"><h2>Mi perfil</h2><button class="btn btn-o btn-s" data-vend="${v.id}">Ver como comprador</button></div>${cajaFoto(v.logo,'logo')}<div class="caja form-g">
+      <div class="f full"><label>Nombre público</label><input class="campo" id="pf-n" value="${esc(v.nombre_publico)}"></div><div class="f"><label>WhatsApp</label><input class="campo" id="pf-w" value="${esc(v.whatsapp)}"></div>${gratis?'':`<div class="f"><label>Instagram</label><input class="campo" id="pf-i" value="${esc(v.instagram)}"></div>`}
       <div class="f"><label>Departamento</label><select class="campo" id="pf-d">${DEPTOS.map(d=>`<option ${v.departamento===d?'selected':''}>${d}</option>`).join('')}</select></div><div class="f"><label>Municipio</label><input class="campo" id="pf-m" value="${esc(v.municipio)}"></div>
-      <div class="f full"><label>Envíos o entrega</label><input class="campo" id="pf-e" value="${esc(v.envios)}"></div>${v.plan==='fundacion'?`<div class="f full"><label>Llave Bre-B para donaciones</label><input class="campo" id="pf-don" value="${esc(v.llave_donaciones)}"></div>`:''}
+      ${gratis?'':`<div class="f full"><label>Envíos o entrega</label><input class="campo" id="pf-e" value="${esc(v.envios)}"></div>`}${v.plan==='fundacion'?`<div class="f full"><label>Llave Bre-B para donaciones</label><input class="campo" id="pf-don" value="${esc(v.llave_donaciones)}"></div>`:''}
       <div class="f full"><label>Descripción</label><textarea class="campo" id="pf-desc" rows="4">${esc(v.descripcion)}</textarea></div><div class="full" style="text-align:right"><button class="btn btn-p" data-guardarperfil>Guardar cambios</button></div></div>`;
   else if(t==='plan'){const {data:pagos}=await sb.from('pagos').select('*').eq('vendedor_id',v.id).order('created_at',{ascending:false}).limit(10);
     body=`<div class="h-dash"><h2>Mi plan</h2></div><div class="caja"><small style="color:var(--gris);font-weight:700">PLAN ACTUAL</small><h3 class="serif" style="font-size:28px;color:var(--verde)">${pl.emoji} ${esc(pl.nombre)}${v.pago_anual?' (anual)':''}</h3><span class="estado ${est[1]}">${est[0]}</span> <small style="color:var(--gris)">Vence: ${fechaCO(v.vence)}</small>${v.oficial?'<div class="aviso">★ Tienda oficial de La Cría: sin costo y sin límite.</div>':''}</div>
-      ${v.oficial?'':`<div class="caja"><b>${pl.pago_unico?'Pagar una nueva publicación':'Renovar mi plan'}</b><p style="color:var(--gris);font-size:14.5px;margin:4px 0 14px">Lo activamos en máximo ${esc(CONFIG.horas_activacion||24)} horas después de subir el pantallazo.</p>${bloquePago(cop(v.pago_anual?pl.precio*10:pl.precio),pl.pago_unico?'la publicación dura 60 días':v.pago_anual?'por 12 meses más':'por 1 mes más','<input type="file" hidden data-renovar accept="image/*,application/pdf">')}</div>`}
+      ${gratis?cajaMejorar():v.oficial?'':`<div class="caja"><b>${pl.pago_unico?'Pagar una nueva publicación':'Renovar mi plan'}</b><p style="color:var(--gris);font-size:14.5px;margin:4px 0 14px">Lo activamos en máximo ${esc(CONFIG.horas_activacion||24)} horas después de subir el pantallazo.</p>${bloquePago(cop(v.pago_anual?pl.precio*10:pl.precio),pl.pago_unico?'la publicación dura 60 días':v.pago_anual?'por 12 meses más':'por 1 mes más','<input type="file" hidden data-renovar accept="image/*,application/pdf">')}</div>`}
       ${(pagos||[]).length?`<table class="tabla"><tr><th>Fecha</th><th>Valor</th><th>Estado</th></tr>${pagos.map(x=>`<tr><td>${fechaCO(x.created_at.slice(0,10))}</td><td>${cop(x.valor)}</td><td><span class="estado ${x.estado==='confirmado'?'e-ok':x.estado==='rechazado'?'e-mal':'e-pend'}">${x.estado==='confirmado'?'Confirmado':x.estado==='rechazado'?'Rechazado':'Por confirmar'}</span></td></tr>`).join('')}</table>`:''}`;}
   else if(t==='seguridad') body='<div class="h-dash"><h2>Correo y contraseña</h2></div>'+vSeguridad();
-  return `<div class="wrap"><div class="dash"><aside class="side"><div class="quien"><b>${esc(v.nombre_publico)}</b><small>${esc(pl.nombre)}${v.oficial?' · Oficial':''}</small></div>${menuLateral(tabs,t)}<button data-vend="${v.id}"><span class="ic">👁</span><span class="tx">Ver mi perfil público</span></button><button data-salir><span class="ic">🚪</span><span class="tx">Cerrar sesión</span></button></aside><div>${body}</div></div></div>`;
+  return `<div class="wrap"><div class="dash"><aside class="side"><div class="quien quien-av"><div class="av av-s">${avatar(v)}</div><div><b>${esc(v.nombre_publico)}</b><small>${esc(pl.nombre)}${v.oficial?' · Oficial':''}</small></div></div>${menuLateral(tabs,t)}<button data-vend="${v.id}"><span class="ic">👁</span><span class="tx">Ver mi perfil público</span></button><button data-salir><span class="ic">🚪</span><span class="tx">Cerrar sesión</span></button></aside><div>${body}</div></div></div>`;
+}
+function cajaMejorar(){
+  const op=PLANES.filter(p=>!esGratis(p)&&!p.adopcion), C=S.cambio=S.cambio&&op.some(p=>p.id===S.cambio.plan)?S.cambio:{plan:'criadero',anual:false}, p=planDe(C.plan), val=C.anual?p.precio*10:p.precio;
+  return `<div class="caja"><b>⬆ Pasar a un plan pago</b><p style="color:var(--gris);font-size:14.5px;margin:4px 0 12px">Escoge el plan, paga y sube el pantallazo. Cuando confirmemos el pago, tu cuenta cambia de plan.</p>
+    <div class="chips" style="margin-bottom:10px">${op.map(x=>`<button class="chip ${C.plan===x.id?'on':''}" data-mejorar="${x.id}">${x.emoji} ${esc(x.nombre)} · ${cop(x.precio)}${x.pago_unico?'':'/mes'}</button>`).join('')}</div>
+    ${['criadero','hacienda'].includes(C.plan)?`<div class="chips" style="margin-bottom:12px"><button class="chip ${!C.anual?'on':''}" data-mejoraranual="0">Mensual</button><button class="chip ${C.anual?'on':''}" data-mejoraranual="1">Anual · 2 meses gratis</button></div>`:''}
+    ${bloquePago(cop(val),C.anual?'un solo pago por 12 meses':p.pago_unico?'la publicación dura 60 días':'mensual','<input type="file" hidden data-renovar accept="image/*,application/pdf">')}</div>`;
 }
 function prevFotos(){return S.pub.fotos.map((f,i)=>`<div class="pf"><img src="${URL.createObjectURL(f)}" alt="">${i===0?'<span class="pf-p">Principal</span>':''}<button type="button" class="arch-x" data-quitarfoto="${i}" aria-label="Quitar foto">✕</button></div>`).join('')}
 function vPublicar(v,pl){
@@ -577,7 +600,7 @@ async function vAdmin(){
   if(t==='seguridad') body='<div class="h-dash"><h2>Correo y contraseña</h2></div>'+vSeguridad();
   return `<div class="wrap"><div class="dash"><aside class="side"><div class="quien"><b>Administración</b><small>La Cría</small></div>${menuLateral(tabs,t)}<button data-salir><span class="ic">🚪</span><span class="tx">Cerrar sesión</span></button></aside><div>${body}</div></div></div>`;
 }
-function venceDe(plan,anual){const p=planDe(plan);return p.pago_unico?sumarDias(60):anual?sumarMeses(12):sumarMeses(1)}
+function venceDe(plan,anual){const p=planDe(plan);return esGratis(p)?sumarDias(30):p.pago_unico?sumarDias(60):anual?sumarMeses(12):sumarMeses(1)}
 
 /* =====================================================================
    SOPORTE, REPORTES, COMPARTIR
@@ -633,10 +656,13 @@ document.addEventListener('click', async e=>{
   if(d.regplan){S.reg.plan=d.regplan;S.reg.esp=[];if(!['criadero','hacienda'].includes(d.regplan))S.reg.anual=false;render();return}
   if(d.reganual){S.reg.anual=d.reganual==='1';render();return}
   if(d.regesp){guardarPasoRegSilencioso();const a=S.reg.esp,i=a.indexOf(d.regesp);i<0?a.push(d.regesp):a.splice(i,1);render();return}
-  if(d.regpaso){const dir=Number(d.regpaso);if(dir>0&&!guardarPasoReg())return;if(dir>0&&S.reg.paso===4){await enviarRegistro();return}S.reg.paso=Math.max(1,Math.min(4,S.reg.paso+dir));render();window.scrollTo({top:0});return}
+  if(d.regpaso){const dir=Number(d.regpaso);if(dir>0&&!guardarPasoReg())return;if(dir>0&&S.reg.paso===4){await enviarRegistro();return}let np=Math.max(1,Math.min(4,S.reg.paso+dir));if(np===2&&esGratis(planDe(S.reg.plan)))np=dir>0?3:1;S.reg.paso=np;render();window.scrollTo({top:0});return}
   // panel vendedor
   if(d.quitararch){guardarPasoRegSilencioso();const l=listaArch(d.quitararch).slice();l.splice(Number(d.i),1);if(l.length)S.reg.arch[d.quitararch]=Array.isArray(S.reg.arch[d.quitararch])?l:l[0];else delete S.reg.arch[d.quitararch];render();return}
   if(d.quitarfoto){S.pub.fotos.splice(Number(d.quitarfoto),1);$('#prevf').innerHTML=prevFotos();return}
+  if(d.mejorar){S.cambio={plan:d.mejorar,anual:false};render();return}
+  if(d.mejoraranual){S.cambio.anual=d.mejoraranual==='1';render();return}
+  if(d.quitaravatar){const vend=d.quitaravatar==='logo';const {error}=vend?await sb.from('vendedores').update({logo:null}).eq('id',S.yo.id):await sb.from('profiles').update({foto:null}).eq('id',S.sesion.user.id);if(error){err(error);return}await cargarSesion();toast('Foto quitada');render();return}
   if(d.ptipo){S.pub.tipo=d.ptipo;render();return}
   if(d.destacar){const {error}=await sb.from('publicaciones').update({destacado:d.val==='1'}).eq('id',d.destacar);if(error){err(error);return}render();return}
   if(d.pubest){const {error}=await sb.from('publicaciones').update({estado:d.val}).eq('id',d.pubest);if(error){err(error);return}render();return}
@@ -647,7 +673,7 @@ document.addEventListener('click', async e=>{
   if(d.vercomp){await verPrivado('comprobantes',d.vercomp);return}
   if(d.aprobar){const {data:v}=await sb.from('vendedores').select('plan,pago_anual').eq('id',d.aprobar).single();const {error}=await sb.from('vendedores').update({estado:'activo',verificado:true,vence:venceDe(v.plan,v.pago_anual)}).eq('id',d.aprobar);if(error){err(error);return}await sb.from('pagos').update({estado:'confirmado',revisado_at:new Date().toISOString()}).eq('vendedor_id',d.aprobar).eq('estado','pendiente');await sb.rpc('notificar',{p_usuario:d.aprobar,p_icono:'🎉',p_texto:'¡Tu cuenta fue aprobada! Ya puedes publicar en La Cría',p_seccion:'resumen',p_admin:false});toast('✅ Cuenta aprobada y activa');render();return}
   if(d.rechazar){const {error}=await sb.from('vendedores').update({estado:'rechazado'}).eq('id',d.rechazar);if(error){err(error);return}await sb.rpc('notificar',{p_usuario:d.rechazar,p_icono:'⚠️',p_texto:'Tu solicitud no fue aprobada. Escríbenos desde Ayuda para saber qué falta',p_seccion:'resumen',p_admin:false});toast('Solicitud rechazada');render();return}
-  if(d.confpago){const {data:p}=await sb.from('pagos').select('*').eq('id',d.confpago).single();const {data:v}=await sb.from('vendedores').select('*').eq('id',p.vendedor_id).single();await sb.from('pagos').update({estado:'confirmado',revisado_at:new Date().toISOString()}).eq('id',p.id);if(v&&v.estado!=='pendiente'){await sb.from('vendedores').update({estado:'activo',vence:venceDe(v.plan,v.pago_anual)}).eq('id',v.id);await sb.rpc('notificar',{p_usuario:v.id,p_icono:'💳',p_texto:'Tu pago fue confirmado y tu plan quedó activo',p_seccion:'plan',p_admin:false})}toast(v&&v.estado==='pendiente'?'Pago confirmado. Ahora aprueba la cuenta en Verificaciones.':'Pago confirmado: plan activo');render();return}
+  if(d.confpago){const {data:p}=await sb.from('pagos').select('*').eq('id',d.confpago).single();const {data:v}=await sb.from('vendedores').select('*').eq('id',p.vendedor_id).single();await sb.from('pagos').update({estado:'confirmado',revisado_at:new Date().toISOString()}).eq('id',p.id);if(v&&v.estado!=='pendiente'){await sb.from('vendedores').update({estado:'activo',plan:p.plan,pago_anual:!!p.pago_anual,vence:venceDe(p.plan,p.pago_anual)}).eq('id',v.id);await sb.rpc('notificar',{p_usuario:v.id,p_icono:'💳',p_texto:'Tu pago fue confirmado y tu plan quedó activo',p_seccion:'plan',p_admin:false})}toast(v&&v.estado==='pendiente'?'Pago confirmado. Ahora aprueba la cuenta en Verificaciones.':'Pago confirmado: plan activo');render();return}
   if(d.rechpago){await sb.from('pagos').update({estado:'rechazado',revisado_at:new Date().toISOString()}).eq('id',d.rechpago);toast('Pago rechazado');render();return}
   if(d.modok){const {error}=await sb.from('publicaciones').update({estado:'activo'}).eq('id',d.modok);if(error){err(error);return}toast('Publicación aprobada');render();return}
   if(d.modno){await sb.from('publicaciones').update({estado:'rechazado'}).eq('id',d.modno);toast('Publicación rechazada');render();return}
@@ -697,8 +723,9 @@ document.addEventListener('change',async e=>{
   if(t.id==='pfotos'){const malos=[];for(const f of t.files){const m=validarArchivo(f,true);if(m)malos.push(m);else if(S.pub.fotos.length<8)S.pub.fotos.push(f);else malos.push(f.name+' (máximo 8 fotos)')}if(malos.length)toast('No se pudo subir: '+malos.join(', '));$('#prevf').innerHTML=prevFotos();t.value=''}
   if(d.arch){const k=d.arch,multi=t.multiple,malos=[];let l=multi?listaArch(k).slice():[];for(const f of t.files){const m=validarArchivo(f,k==='fotos');if(m){malos.push(m);continue}if(multi&&l.length>=(ARCH_MAX[k]||6)){malos.push(f.name+' (máximo '+(ARCH_MAX[k]||6)+')');continue}if(multi)l.push(f);else l=[f]}
     if(malos.length)toast('No se pudo subir: '+malos.join(', '));if(!l.length)return;guardarPasoRegSilencioso();S.reg.arch[k]=multi?l:l[0];render()}
+  if(d.subiravatar){const f=t.files[0];if(!f)return;const m=validarArchivo(f,true);if(m){toast('No se pudo subir: '+m);return}try{toast('Subiendo foto…');const vend=d.subiravatar==='logo',uid=S.sesion.user.id;const r=await subir('fotos',uid,await fotoCuadrada(f),true);const {error}=vend?await sb.from('vendedores').update({logo:r}).eq('id',uid):await sb.from('profiles').update({foto:r}).eq('id',uid);if(error)throw error;await cargarSesion();toast('✅ Foto guardada');render()}catch(x){err(x,'No se pudo subir la foto')}return}
   if(d.subirqr!==undefined){const f=t.files[0];if(!f)return;try{toast('Subiendo QR…');const r=await subir('fotos',S.sesion.user.id,f,true);const {error}=await sb.from('config').upsert({clave:'qr_breb',valor:r});if(error)throw error;await cargarBase();toast('✅ QR guardado');render()}catch(x){err(x,'No se pudo subir el QR')}return}
-  if(d.renovar!==undefined){const f=t.files[0];if(!f)return;try{const v=S.yo,pl=planDe(v.plan);toast('Subiendo comprobante…');const r=await subir('comprobantes',v.id,f);const {error}=await sb.from('pagos').insert({vendedor_id:v.id,plan:v.plan,pago_anual:v.pago_anual,valor:v.pago_anual?pl.precio*10:pl.precio,comprobante:r});if(error)throw error;toast('Comprobante enviado. Te avisamos cuando se confirme.');render()}catch(x){err(x,'No se pudo subir')}}
+  if(d.renovar!==undefined){const f=t.files[0];if(!f)return;try{const v=S.yo,cam=esGratis(planDe(v.plan))&&S.cambio,np=cam?S.cambio.plan:v.plan,an=cam?!!S.cambio.anual:v.pago_anual,pl=planDe(np);toast('Subiendo comprobante…');const r=await subir('comprobantes',v.id,f);const {error}=await sb.from('pagos').insert({vendedor_id:v.id,plan:np,pago_anual:an,valor:an?pl.precio*10:pl.precio,comprobante:r});if(error)throw error;toast('Comprobante enviado. Te avisamos cuando se confirme.');render()}catch(x){err(x,'No se pudo subir')}}
 });
 $('#velo').addEventListener('click',e=>{if(e.target.id==='velo')cerrar()});
 
