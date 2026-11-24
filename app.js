@@ -102,6 +102,7 @@ async function cargarNotifs(){
 }
 sb.auth.onAuthStateChange(async (ev)=>{
   if(ev==='PASSWORD_RECOVERY'){modalNuevaClave();return}
+  if(S.enviando) return;
   if(ev==='SIGNED_IN'||ev==='SIGNED_OUT'||ev==='USER_UPDATED'){await cargarSesion();render()}
 });
 
@@ -309,7 +310,8 @@ function pedirCuenta(accion){modal(`<h3>Crea tu cuenta gratis</h3><p style="colo
 async function vCrear(){
   if(S.sesion) return vMiCuenta();
   return `<div class="wrap"><div class="reg" style="max-width:600px">
-    <h2 class="serif" style="color:var(--verde)">Crea tu cuenta en La Cría</h2><p style="color:var(--gris);margin-bottom:16px">Gratis. Con tu cuenta puedes guardar favoritos y, si quieres vender o dar en adopción, elegir tu plan.</p>
+    <div class="aviso" style="margin:0 0 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:220px">🐾 <b>¿Vas a vender o dar animales en adopción?</b> No llenes esto: elige tu plan, paga y ahí mismo creas tu cuenta.</span><button class="btn btn-p btn-s" data-go="planes">Ver planes</button></div>
+    <h2 class="serif" style="color:var(--verde)">Crear cuenta de comprador</h2><p style="color:var(--gris);margin-bottom:16px">Gratis. Para guardar favoritos y contactar vendedores.</p>
     <div class="form-g"><div class="f"><label>Nombre</label><input class="campo" id="cc-n"></div><div class="f"><label>Apellido</label><input class="campo" id="cc-a"></div>
       <div class="f full"><label>Correo</label><input class="campo" id="cc-c" type="email" placeholder="tucorreo@gmail.com"></div>
       <div class="f"><label>Celular (WhatsApp)</label><input class="campo" id="cc-w" placeholder="300 123 4567"></div>
@@ -357,7 +359,6 @@ async function vMiCuenta(){
    REGISTRO DE VENDEDORES Y FUNDACIONES
    ===================================================================== */
 async function vRegistro(){
-  if(!S.sesion){S.despues='registro';return `<div class="wrap"><div class="reg" style="max-width:560px;text-align:center"><div style="font-size:48px">🐾</div><h2 class="serif" style="color:var(--verde)">Primero crea tu cuenta</h2><p style="color:var(--gris);margin:8px 0 18px">Para vender o dar en adopción necesitas una cuenta. Créala (es gratis), confirma tu correo y vuelve a elegir tu plan.</p><button class="btn btn-p" data-gocrear>Crear cuenta</button> <button class="btn btn-o" data-login>Ya tengo cuenta</button></div></div>`}
   if(S.yo) return vPanel();
   const R=S.reg, pl=planDe(R.plan), ado=pl.adopcion, fu=R.plan==='fundacion', oc=pl.pago_unico, valor=R.anual?pl.precio*10:pl.precio;
   const up=(k,t)=>cajaArchivo(k,t,k==='fotos');
@@ -370,7 +371,14 @@ async function vRegistro(){
       <div class="f"><label>Departamento</label><select class="campo" id="r-dep">${DEPTOS.map(d=>`<option ${R.dep===d?'selected':''}>${d}</option>`).join('')}</select></div><div class="f"><label>Municipio</label><input class="campo" id="r-mun" value="${esc(R.mun||'')}"></div>
       <div class="f"><label>WhatsApp público</label><input class="campo" id="r-wa" value="${esc(R.wa||(S.perfil||{}).whatsapp||'')}"></div>${oc?'':`<div class="f"><label>Instagram (opcional)</label><input class="campo" id="r-ig" value="${esc(R.ig||'')}"></div><div class="f"><label>${fu?'Años rescatando':'Años de experiencia'}</label><input class="campo" id="r-an" type="number" value="${esc(R.an||'')}"></div>`}
       <div class="f full"><label>${ado?'¿Qué especies das en adopción?':'¿Qué especies vendes?'}</label><div class="chips">${CATS.filter(c=>c.activa&&!['no_habilitada','prohibida'].includes(c.estado_legal)).map(c=>`<button class="chip ${R.esp.includes(c.id)?'on':''}" data-regesp="${c.id}">${c.emoji} ${esc(c.nombre)}</button>`).join('')}</div>${R.plan==='criadero'?'<small>El plan Criadero incluye hasta 3 especies.</small>':''}</div>
-      <div class="f full"><label>Descripción</label><textarea class="campo" id="r-desc" rows="3">${esc(R.desc||'')}</textarea></div></div>`;
+      <div class="f full"><label>Descripción</label><textarea class="campo" id="r-desc" rows="3">${esc(R.desc||'')}</textarea></div>
+      ${S.sesion?`<div class="f full aviso" style="margin:4px 0 0">👤 Tu solicitud queda en tu cuenta <b>${esc(S.sesion.user.email)}</b>.</div>`:`<div class="f full" style="border-top:1px dashed var(--linea);padding-top:12px;margin-top:4px"><b>Datos para entrar a tu cuenta</b><small style="display:block">Con este correo y contraseña entras a tu panel de vendedor.</small></div>
+      <div class="f"><label>${fu?'Representante legal':'Tu nombre completo'}</label><input class="campo" id="r-resp" value="${esc(R.resp||'')}"></div>
+      <div class="f"><label>Correo</label><input class="campo" id="r-cor" type="email" placeholder="tucorreo@gmail.com" value="${esc(R.cor||'')}"></div>
+      <div class="f"><label>Contraseña</label><input class="campo" id="r-pas" type="password" placeholder="Mínimo 8 caracteres" value="${esc(R.pas||'')}"></div>
+      <div class="f"><label>Repite la contraseña</label><input class="campo" id="r-pas2" type="password" value="${esc(R.pas2||'')}"></div>
+      <label class="full chk"><input type="checkbox" id="r-18" ${R.m18?'checked':''}> Soy mayor de 18 años</label>
+      <p class="full" style="font-size:13.5px;margin:0">¿Ya tienes cuenta en La Cría? <button class="link" data-login>Inicia sesión</button> y continúa aquí mismo.</p>`}</div>`;
   if(R.paso===4){const prod=R.esp.some(x=>PRODUCCION.includes(x));
     cuerpo=`<h2 class="serif" style="color:var(--verde)">Documentos de verificación</h2><p style="color:var(--gris);margin-bottom:16px">Solo los ve el equipo de La Cría. Nunca se publican.</p>
     <div class="form-g"><div class="f"><label>Tipo de documento</label><select class="campo" id="r-td">${['Cédula de ciudadanía','Cédula de extranjería','NIT'].map(x=>`<option ${R.td===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="f"><label>Número</label><input class="campo" id="r-nd" value="${esc(R.nd||'')}"></div>
@@ -403,13 +411,19 @@ function bloquePago(valor,detalle,clave,listo){
     <ol class="pago-pasos"><li>Abre la app de tu banco y entra a <b>Bre-B</b> (o “Transferir con llave”).</li><li>${qr?'Escanea el QR o escribe':'Escribe'} la llave <b>${esc(CONFIG.llave_breb||'')}</b>.</li><li>Paga el valor exacto: <b>${valor}</b>.</li><li>Toma pantallazo del pago y súbelo aquí abajo.</li></ol>
     ${clave==='comp'?cajaArchivo('comp','Subir pantallazo del pago'):`<label class="subir" style="display:block;cursor:pointer">⬆ Subir pantallazo del pago${clave}</label>`}`;
 }
+function datosCuentaReg(R,g){if(S.sesion)return;Object.assign(R,{resp:g('r-resp'),cor:(g('r-cor')||'').toLowerCase(),pas:$('#r-pas')?$('#r-pas').value:R.pas,pas2:$('#r-pas2')?$('#r-pas2').value:R.pas2});if($('#r-18'))R.m18=$('#r-18').checked}
 function guardarPasoReg(){
   const R=S.reg, g=id=>{const el=$('#'+id);return el?el.value.trim():undefined};
   if(R.paso===2&&!R.arch.comp){toast('Sube el pantallazo del pago para continuar');return false}
   if(R.paso===3){Object.assign(R,{nom:g('r-nom'),dep:g('r-dep'),mun:g('r-mun'),wa:g('r-wa'),ig:g('r-ig')??R.ig,an:g('r-an')??R.an,desc:g('r-desc')});
     if(!R.nom||!R.mun||!R.wa){toast('Completa el nombre, el municipio y el WhatsApp');return false}
     if(!R.esp.length){toast('Elige al menos una especie');return false}
-    if(R.plan==='criadero'&&R.esp.length>3){toast('El plan Criadero permite hasta 3 especies');return false}}
+    if(R.plan==='criadero'&&R.esp.length>3){toast('El plan Criadero permite hasta 3 especies');return false}
+    datosCuentaReg(R,g);
+    if(!S.sesion){if(!R.resp||!R.cor||!/^\S+@\S+\.\S+$/.test(R.cor)){toast('Escribe tu nombre y un correo válido');return false}
+      if((R.pas||'').length<8){toast('La contraseña debe tener mínimo 8 caracteres');return false}
+      if(R.pas!==R.pas2){toast('Las contraseñas no coinciden');return false}
+      if(!R.m18){toast('Debes ser mayor de 18 años');return false}}}
   if(R.paso===4){Object.assign(R,{td:g('r-td'),nd:g('r-nd'),dir:g('r-dir')});
     if(!R.nd||!R.dir){toast('Escribe el número de documento y la dirección');return false}
     if(!R.arch.cedula){toast('Sube la foto de tu cédula');return false}
@@ -417,10 +431,20 @@ function guardarPasoReg(){
   return true;
 }
 async function enviarRegistro(){
-  const R=S.reg, uid=S.sesion.user.id, pl=planDe(R.plan);
+  const R=S.reg, pl=planDe(R.plan);
   if(!R.arch.comp){toast('Sube el comprobante de pago');return}
   const btn=$('#regsig'); btn.disabled=true; btn.textContent='Enviando…';
+  S.enviando=true;
   try{
+    if(!S.sesion){
+      const {data,error}=await sb.auth.signUp({email:R.cor,password:R.pas,options:{data:{nombre:R.resp,whatsapp:R.wa,departamento:R.dep},emailRedirectTo:urlBase()}});
+      if(error){S.enviando=false;btn.disabled=false;btn.textContent='Enviar solicitud';
+        if(/registered|already/i.test(error.message)){S.despues='registro';modalLogin('Ese correo ya tiene cuenta en La Cría. Entra con tu contraseña y luego toca “Enviar solicitud” otra vez. No pierdes lo que ya llenaste.');return}
+        throw error}
+      if(!data.session){S.enviando=false;btn.disabled=false;btn.textContent='Enviar solicitud';modal('<h3>Falta un ajuste</h3><p style="margin-top:8px">No pudimos crear tu cuenta en este momento. Escríbenos desde <b>Ayuda</b> y te ayudamos a terminar tu registro.</p>');return}
+      S.sesion=data.session;
+    }
+    const uid=S.sesion.user.id;
     const docs={};
     for(const [k,f] of Object.entries(R.arch)){ if(k==='comp') continue; if(Array.isArray(f)){docs[k]=[];for(const x of f)docs[k].push(await subir('documentos',uid,x))} else docs[k]=await subir('documentos',uid,f); }
     const comp=await subir('comprobantes',uid,Array.isArray(R.arch.comp)?R.arch.comp[0]:R.arch.comp);
@@ -429,10 +453,11 @@ async function enviarRegistro(){
     r=await sb.from('vendedores_privado').upsert({id:uid,tipo_documento:R.td,numero_documento:R.nd,direccion_notificaciones:R.dir,telefono:R.wa,documentos:docs}); if(r.error) throw r.error;
     r=await sb.from('pagos').insert({vendedor_id:uid,plan:R.plan,pago_anual:!!R.anual,valor:R.anual?pl.precio*10:pl.precio,comprobante:comp}); if(r.error) throw r.error;
     await sb.from('aceptaciones').insert({usuario_id:uid,tipo:pl.adopcion?'Adopción':'Vendedor',documentos:'Términos · Datos · Reglas · '+(pl.adopcion?'Condiciones de adopción':'Condiciones para vendedores')+' · Declaración art. 53'});
-    S.reg={paso:1,plan:'criadero',anual:false,esp:[],arch:{}};
+    if(R.pas)await sb.from('aceptaciones').insert({usuario_id:uid,tipo:'Cuenta',documentos:'Términos · Datos personales · Aviso de privacidad · Mayor de 18'});
+    S.reg={paso:1,plan:'criadero',anual:false,esp:[],arch:{}};S.enviando=false;
     await cargarSesion(); S.sub='resumen'; go('panel');
     modal(`<div style="text-align:center"><div style="font-size:60px">🎉</div><h3>¡Solicitud enviada!</h3><p style="color:var(--gris);margin-top:8px">Revisaremos tus documentos y el pago en máximo ${esc(CONFIG.horas_activacion||24)} horas. Cuando tu cuenta esté activa podrás publicar.</p></div>`);
-  }catch(e){err(e,'No se pudo enviar la solicitud');btn.disabled=false;btn.textContent='Enviar solicitud'}
+  }catch(e){S.enviando=false;err(e,'No se pudo enviar la solicitud');const b2=$('#regsig');if(b2){b2.disabled=false;b2.textContent='Enviar solicitud'}}
 }
 
 /* =====================================================================
@@ -651,7 +676,7 @@ document.addEventListener('click', async e=>{
   if(d.leertodo!==undefined){const ids=S.notifs.filter(x=>!x.leida).map(x=>x.id);if(ids.length)await sb.from('notificaciones').update({leida:true}).in('id',ids);S.notifs.forEach(x=>x.leida=true);pintarCampana();$('#pnotif').classList.add('on');return}
   }catch(x){err(x)}
 });
-function guardarPasoRegSilencioso(){const R=S.reg,g=id=>{const el=$('#'+id);return el?el.value.trim():undefined};if(R.paso===4){Object.assign(R,{td:g('r-td'),nd:g('r-nd'),dir:g('r-dir')});if($('#r-decl'))R.decl=$('#r-decl').checked}if(R.paso===3)Object.assign(R,{nom:g('r-nom'),dep:g('r-dep'),mun:g('r-mun'),wa:g('r-wa'),ig:g('r-ig')??R.ig,an:g('r-an')??R.an,desc:g('r-desc')})}
+function guardarPasoRegSilencioso(){const R=S.reg,g=id=>{const el=$('#'+id);return el?el.value.trim():undefined};if(R.paso===3)datosCuentaReg(R,g);if(R.paso===4){Object.assign(R,{td:g('r-td'),nd:g('r-nd'),dir:g('r-dir')});if($('#r-decl'))R.decl=$('#r-decl').checked}if(R.paso===3)Object.assign(R,{nom:g('r-nom'),dep:g('r-dep'),mun:g('r-mun'),wa:g('r-wa'),ig:g('r-ig')??R.ig,an:g('r-an')??R.an,desc:g('r-desc')})}
 document.addEventListener('submit',async e=>{
   e.preventDefault();
   if(e.target.id==='buscar'){S.f={...filtrosVacios(),q:new FormData(e.target).get('q')||''};go('explorar')}
