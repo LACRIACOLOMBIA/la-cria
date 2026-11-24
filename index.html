@@ -46,6 +46,21 @@
 .perfil-cab h1{line-height:1.15;margin:2px 0 4px}
 .lk-dato{color:var(--tinta);text-decoration:none;font-weight:600;word-break:break-all}.lk-dato:hover{color:var(--terra);text-decoration:underline}
 @media(max-width:700px){.perfil-cab>div:not(.av){margin-top:0}.perfil-cab>div:not(.av):nth-child(2){margin-top:8px}}
+.banner-img{display:block;position:relative;border-radius:18px;overflow:hidden;line-height:0;background:var(--crema);box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.banner-img img{width:100%;aspect-ratio:4/1;object-fit:cover;display:block;transition:transform .3s}a.banner-img:hover img{transform:scale(1.015)}
+.ban-tag{position:absolute;top:8px;right:10px;background:rgba(0,0,0,.45);color:#fff;font-size:10.5px;line-height:1;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:6px}
+.ban-rot{position:relative}.ban-rot .ban-slide{display:none}.ban-rot .ban-slide.on{display:block;animation:banIn .5s}
+@keyframes banIn{from{opacity:0}to{opacity:1}}
+.ban-puntos{display:flex;justify-content:center;gap:6px;margin-top:8px}.ban-puntos span{width:8px;height:8px;border-radius:50%;background:var(--linea)}.ban-puntos span.on{background:var(--terra)}
+.ban-prev{border:2px dashed var(--linea);border-radius:14px;aspect-ratio:4/1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--crema);color:var(--gris);font-size:14px}.ban-prev img{width:100%;height:100%;object-fit:cover}
+.ban-item{display:flex;gap:16px;align-items:center;flex-wrap:wrap}.ban-mini{width:200px;aspect-ratio:4/1;border-radius:10px;overflow:hidden;background:var(--crema);display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}.ban-mini img{width:100%;height:100%;object-fit:cover}
+@media(max-width:640px){.banner-img img{aspect-ratio:3/1}.ban-mini{width:100%}}
+.hilo{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px}
+.msj{max-width:85%;background:var(--crema);border:1px solid var(--linea);border-radius:14px 14px 14px 4px;padding:9px 13px;white-space:pre-line;font-size:15px}
+.msj small{display:block;font-size:11.5px;color:var(--gris);font-weight:700;margin-bottom:2px;white-space:normal}
+.msj.mio{align-self:flex-end;border-radius:14px 14px 4px 14px;background:#EEF5F0;border-color:#C8DFCF}
+.msj.adm small{color:var(--verde)}
+.resp-box{display:flex;gap:8px;align-items:flex-end;margin-top:10px}.resp-box textarea{flex:1;resize:vertical;min-height:46px}
 </style>
 </head>
 <body>

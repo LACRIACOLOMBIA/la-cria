@@ -156,7 +156,7 @@ async function vInicio(){
     sb.from('publicaciones').select(SELECT_PUB).eq('estado','activo').order('destacado',{ascending:false}).order('created_at',{ascending:false}).limit(8),
     sb.from('vendedores').select('id,nombre_publico,plan,departamento,municipio,verificado,oficial,logo').eq('estado','activo').limit(6)]);
   const pop=['bovino','porcino','equino','canino','felino','bufalino','ovino','caprino','conejo','gallinas','abeja','peces'].map(catDe).filter(c=>c.activa!==false);
-  const ban=BANNERS.filter(b=>b.ubicacion==='inicio');
+  const ban=bannersDe('inicio');
   return `
   <section class="hero"><div class="wrap"><span class="deco">🐄</span>
     <h1>Los criadores de Colombia, <em>en un solo lugar.</em></h1>
@@ -181,8 +181,18 @@ async function vInicio(){
   ${vend&&vend.length?`<section class="blk" style="padding-top:0"><div class="wrap"><div class="tit"><div><h2>Vendedores verificados</h2></div><button class="link" data-go="vendedores">Ver todos →</button></div><div class="criaderos">${vend.map(crc).join('')}</div></div></section>`:''}
   <section class="blk" style="padding-top:0"><div class="wrap"><div class="cta"><div><h2 class="serif">¿Crías animales? Publícalos y llega a todo el país.</h2><p>Sin comisiones por venta. Elige el plan que se ajusta a ti.</p></div><button class="btn" style="background:#fff;color:var(--terra)" data-go="planes">Ver planes</button></div></div></section>`;
 }
-function bannersHtml(list){const enl=l=>{l=(l||'').trim();if(!l)return'';const d=l.replace(/\D/g,'');if(!/[a-z]/i.test(l)&&d.length>=7)return'https://wa.me/'+(d.length===10?'57'+d:d);return/^https?:\/\//i.test(l)?l:'https://'+l};
-  return `<div class="banners">${list.map(x=>`<div class="banner-ad" style="background:${esc(x.color||'#2F5A42')}"><span class="em">${esc(x.emoji||'📣')}</span><div style="flex:1"><small>Publicidad · ${esc(x.anunciante)}</small><b>${esc(x.texto)}</b></div>${enl(x.enlace)?`<a class="btn btn-s" style="background:#fff;color:${esc(x.color)};text-decoration:none" href="${esc(enl(x.enlace))}" target="_blank" rel="noopener sponsored">${esc(x.boton||'Ver más')}</a>`:''}</div>`).join('')}</div>`}
+const hoyISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function enlaceBanner(l){l=(l||'').trim();if(!l)return'';const d=l.replace(/\D/g,'');if(!/[a-z]/i.test(l)&&d.length>=7)return'https://wa.me/'+(d.length===10?'57'+d:d);return/^https?:\/\//i.test(l)?l:'https://'+l}
+function estadoBanner(b){const h=hoyISO();if(!b.activo)return['Pausado','e-gris'];if(b.desde&&b.desde>h)return['Programado','e-pend'];if(b.hasta&&b.hasta<h)return['Terminado','e-gris'];return['Al aire','e-ok']}
+function bannersDe(lugar){return BANNERS.filter(b=>(b.ubicacion===lugar||b.ubicacion==='ambas')&&estadoBanner(b)[0]==='Al aire').sort(()=>Math.random()-.5)}
+function bannersHtml(list){
+  const uno=x=>{const u=enlaceBanner(x.enlace);
+    if(x.imagen){const img=`<img src="${esc(fotoUrl(x.imagen))}" alt="${esc(x.texto||('Publicidad de '+x.anunciante))}" loading="lazy"><span class="ban-tag">Publicidad</span>`;
+      return u?`<a class="banner-img" href="${esc(u)}" target="_blank" rel="noopener sponsored" data-banclic="${x.id}">${img}</a>`:`<div class="banner-img">${img}</div>`}
+    return `<div class="banner-ad" style="background:${esc(x.color||'#2F5A42')}"><span class="em">${esc(x.emoji||'📣')}</span><div style="flex:1"><small>Publicidad · ${esc(x.anunciante)}</small><b>${esc(x.texto||'')}</b></div>${u?`<a class="btn btn-s" style="background:#fff;color:${esc(x.color||'#2F5A42')};text-decoration:none" href="${esc(u)}" target="_blank" rel="noopener sponsored" data-banclic="${x.id}">${esc(x.boton||'Ver más')}</a>`:''}</div>`};
+  return `<div class="banners ${list.length>1?'ban-rot':''}">${list.map((x,i)=>`<div class="ban-slide ${i===0?'on':''}">${uno(x)}</div>`).join('')}${list.length>1?`<div class="ban-puntos">${list.map((x,i)=>`<span class="${i===0?'on':''}"></span>`).join('')}</div>`:''}</div>`;
+}
+setInterval(()=>{document.querySelectorAll('.ban-rot').forEach(r=>{const sl=[...r.querySelectorAll('.ban-slide')],pt=[...r.querySelectorAll('.ban-puntos span')];let i=sl.findIndex(x=>x.classList.contains('on'));sl[i].classList.remove('on');pt[i]&&pt[i].classList.remove('on');i=(i+1)%sl.length;sl[i].classList.add('on');pt[i]&&pt[i].classList.add('on')})},6000);
 const urlWeb = w => { w=String(w||'').trim(); return /^https?:\/\//i.test(w)?w:'https://'+w };
 const avatar = (v,emoji) => v&&v.logo ? `<img src="${esc(fotoUrl(v.logo))}" alt="">` : (emoji||planDe(v&&v.plan).emoji||'🐾');
 function crc(v){return `<button class="crc" data-vend="${v.id}"><div class="av">${avatar(v)}</div><div><b>${esc(v.nombre_publico)}</b><small>${esc(v.municipio||'')}${v.municipio?', ':''}${esc(v.departamento||'')}</small><div style="margin-top:5px">${sellos(v)}</div></div></button>`}
@@ -208,7 +218,7 @@ async function vExplorar(){
   const f=S.f, cat=f.cat?catDe(f.cat):null, r=await buscarPublicaciones(), tipos=cat?(cat.tipos||[]):Object.keys(TIPOS);
   const chip=(k,v,t)=>`<button class="chip ${f[k]===v?'on':''}" data-f="${k}" data-v="${v}">${t}</button>`;
   const act=[];if(f.q)act.push(['q','“'+esc(f.q)+'”']);if(cat)act.push(['cat',cat.emoji+' '+esc(cat.nombre)]);if(f.raza)act.push(['raza',esc(f.raza)]);if(f.prop)act.push(['prop',PROP[f.prop]]);if(f.tipo)act.push(['tipo',TIPOS[f.tipo]]);if(f.sexo)act.push(['sexo',f.sexo]);if(f.depto)act.push(['depto','📍 '+f.depto]);if(f.min||f.max)act.push(['precio','💲 '+(f.min?cop(f.min):'0')+' – '+(f.max?cop(f.max):'más')]);if(f.vend)act.push(['vend',{particular:'Particular',profesional:'Profesional',fundacion:'Fundación'}[f.vend]]);
-  const ban=BANNERS.filter(b=>b.ubicacion==='explorar');
+  const ban=bannersDe('explorar');
   return `<div class="wrap"><div class="explorar">
     <aside class="filtros ${S.verFiltros?'abierto':''}"><div class="filtros-cab"><b>Filtros</b><button data-verfiltros>✕ Cerrar</button></div>
       <h3>Buscar</h3><input class="campo" id="fq" value="${esc(f.q)}" placeholder="Raza, tipo, ciudad…">
@@ -349,6 +359,21 @@ function cajaFoto(actual,tipo){
 }
 /* recorta la imagen en cuadrado y la reduce para que cargue rápido */
 function fotoCuadrada(file,lado=600){return new Promise((ok,fail)=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const m=Math.min(img.width,img.height),c=document.createElement('canvas');c.width=c.height=Math.min(lado,m);c.getContext('2d').drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,c.width,c.height);c.toBlob(b=>{URL.revokeObjectURL(u);b?ok(new File([b],'perfil.jpg',{type:'image/jpeg'})):fail(new Error('No se pudo procesar la imagen'))},'image/jpeg',.88)};img.onerror=()=>fail(new Error('Archivo de imagen no válido'));img.src=u})}
+function reducirImagen(file,max){return new Promise((ok,fail)=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const r=Math.min(1,max/img.width),c=document.createElement('canvas');c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext('2d').drawImage(img,0,0,c.width,c.height);c.toBlob(b=>{URL.revokeObjectURL(u);b?ok(new File([b],'banner.jpg',{type:'image/jpeg'})):fail(new Error('No se pudo procesar la imagen'))},'image/jpeg',.9)};img.onerror=()=>fail(new Error('Archivo de imagen no válido'));img.src=u})}
+const ESTADO_T={abierto:['Esperando respuesta','e-pend'],respondido:['Respondido','e-ok'],cerrado:['Cerrado','e-gris']};
+function hiloTicket(x,soyAdmin){
+  const fh=d=>new Date(d).toLocaleString('es-CO',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+  const msgs=[{texto:x.mensaje,de_admin:false,created_at:x.created_at}].concat((x.respuestas||[]).slice().sort((a,b)=>a.created_at<b.created_at?-1:1));
+  return `<div class="hilo">${msgs.map(m=>{const mio=soyAdmin?m.de_admin:!m.de_admin;return `<div class="msj ${mio?'mio':''} ${m.de_admin?'adm':''}"><small>${m.de_admin?'🐾 La Cría':esc(soyAdmin?(x.nombre||'Usuario'):'Tú')} · ${fh(m.created_at)}</small><div>${esc(m.texto)}</div></div>`}).join('')}</div>
+    ${x.estado!=='cerrado'?`<div class="resp-box"><textarea class="campo" id="tr-${x.id}" rows="2" placeholder="${soyAdmin?'Escribe tu respuesta…':'Escribe tu mensaje…'}"></textarea><button class="btn btn-p btn-s" data-tresp="${x.id}">Enviar</button></div>`:`<p style="font-size:13.5px;color:var(--gris);margin-top:10px">Este caso está cerrado.${soyAdmin?'':' Si necesitas algo más, abre un caso nuevo.'}</p>`}`;
+}
+async function vSoporteUsuario(){
+  const {data}=await sb.from('tickets').select('*, respuestas:ticket_respuestas(*)').eq('usuario_id',S.sesion.user.id).order('created_at',{ascending:false}).limit(30);
+  const L=data||[];
+  return `<div class="h-dash"><h2>Ayuda y soporte</h2><button class="btn btn-p btn-s" data-soporte>➕ Nuevo caso</button></div>
+    <div class="caja" style="background:var(--crema);font-size:14.5px">🛟 Aquí ves tus casos con el equipo de La Cría. Cuando te respondamos te llega un aviso a la campanita 🔔 y puedes contestar desde aquí mismo.</div>
+    ${L.map(x=>{const e=ESTADO_T[x.estado]||ESTADO_T.abierto;return `<div class="caja"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><b>${esc(x.tipo||'Caso')}</b> <small style="color:var(--gris)">#${x.id}</small>${x.referencia?`<div style="font-size:13.5px;color:var(--gris)">Sobre: ${esc(x.referencia)}</div>`:''}</div><span class="estado ${e[1]}">${e[0]}</span></div>${hiloTicket(x,false)}</div>`}).join('')||'<div class="vacio">No tienes casos de soporte. Si necesitas ayuda, toca “➕ Nuevo caso”.</div>'}`;
+}
 function vSeguridad(){
   const correo=S.sesion?S.sesion.user.email:'';
   return `<div class="caja"><b>🔐 Correo y contraseña</b><p style="font-size:13.5px;color:var(--gris);margin:4px 0 12px">Para cambiar la contraseña te enviamos un código a tu correo. No necesitas la contraseña actual.</p>
@@ -362,13 +387,14 @@ function vSeguridad(){
 /* --- Mi cuenta (comprador) --- */
 async function vMiCuenta(){
   if(!S.sesion) return vCrear();
-  const t=S.sub==='seguridad'||S.sub==='favs'||S.sub==='datos'?S.sub:'favs';
+  const t=['seguridad','favs','datos','soporte'].includes(S.sub)?S.sub:'favs';
   let body='';
   if(t==='favs'){const {data}=await sb.from('favoritos').select('publicacion_id, publicaciones('+SELECT_PUB+')').order('created_at',{ascending:false});const l=(data||[]).map(x=>x.publicaciones).filter(Boolean);body=l.length?`<div class="grid">${l.map(tarjeta).join('')}</div>`:'<div class="vacio">Toca “♡ Guardar” en un animal para verlo aquí.</div>'}
   if(t==='datos'){const p=S.perfil||{};body=cajaFoto(p.foto,'foto')+`<div class="caja form-g"><div class="f"><label>Nombre</label><input class="campo" id="md-n" value="${esc(p.nombre)}"></div><div class="f"><label>Celular</label><input class="campo" id="md-w" value="${esc(p.whatsapp)}"></div><div class="f"><label>Departamento</label><select class="campo" id="md-d">${DEPTOS.map(d=>`<option ${p.departamento===d?'selected':''}>${d}</option>`).join('')}</select></div><div class="full" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><button class="btn btn-o btn-s" data-go="planes">🐾 Quiero vender o dar en adopción</button><button class="btn btn-p btn-s" data-guardardatos>Guardar</button></div></div>`}
   if(t==='seguridad') body=vSeguridad();
-  const tabs=[['favs','♡','Favoritos'],['datos','👤','Mis datos'],['seguridad','🔐','Correo y contraseña']];
-  return `<div class="wrap"><div class="dash"><aside class="side"><div class="quien quien-av"><div class="av av-s">${S.perfil&&S.perfil.foto?`<img src="${esc(fotoUrl(S.perfil.foto))}" alt="">`:'👤'}</div><div><b>${esc((S.perfil||{}).nombre||'Mi cuenta')}</b><small>Cuenta gratis</small></div></div>${tabs.map(([k,i,n])=>`<button class="${t===k?'on':''}" data-sub="${k}"><span class="ic">${i}</span><span class="tx">${n}</span></button>`).join('')}<button data-salir><span class="ic">🚪</span><span class="tx">Cerrar sesión</span></button></aside><div><div class="h-dash"><h2>${tabs.find(x=>x[0]===t)[2]}</h2></div>${body}</div></div></div>`;
+  if(t==='soporte') body=await vSoporteUsuario();
+  const tabs=[['favs','♡','Favoritos'],['datos','👤','Mis datos'],['soporte','🛟','Ayuda y soporte'],['seguridad','🔐','Correo y contraseña']];
+  return `<div class="wrap"><div class="dash"><aside class="side"><div class="quien quien-av"><div class="av av-s">${S.perfil&&S.perfil.foto?`<img src="${esc(fotoUrl(S.perfil.foto))}" alt="">`:'👤'}</div><div><b>${esc((S.perfil||{}).nombre||'Mi cuenta')}</b><small>Cuenta gratis</small></div></div>${tabs.map(([k,i,n])=>`<button class="${t===k?'on':''}" data-sub="${k}"><span class="ic">${i}</span><span class="tx">${n}</span></button>`).join('')}<button data-salir><span class="ic">🚪</span><span class="tx">Cerrar sesión</span></button></aside><div>${t==='soporte'?'':`<div class="h-dash"><h2>${tabs.find(x=>x[0]===t)[2]}</h2></div>`}${body}</div></div></div>`;
 }
 
 /* =====================================================================
@@ -487,10 +513,10 @@ async function vPanel(){
   const {data:pubs}=await sb.from('publicaciones').select('*').eq('vendedor_id',v.id).order('created_at',{ascending:false});
   const activas=(pubs||[]).filter(p=>['activo','revision'].includes(p.estado));
   const lim=v.oficial?9999:(pl.max_publicaciones??9999), limDest=v.oficial?10:(pl.max_destacados||0);
-  const tabs=[['resumen','🏠','Inicio'],['§','Mis animales'],['pubs',adop?'💜':'🐾',adop?'En adopción':'Publicaciones'],['nueva','➕','Publicar'],['§','Mi cuenta'],['perfil','🏡','Mi perfil'],['plan','💳','Mi plan'],['seguridad','🔐','Correo y contraseña']];
+  const tabs=[['resumen','🏠','Inicio'],['§','Mis animales'],['pubs',adop?'💜':'🐾',adop?'En adopción':'Publicaciones'],['nueva','➕','Publicar'],['§','Mi cuenta'],['perfil','🏡','Mi perfil'],['plan','💳','Mi plan'],['soporte','🛟','Ayuda y soporte'],['seguridad','🔐','Correo y contraseña']];
   const t=tabs.some(x=>x[0]===S.sub)?S.sub:'resumen'; let body='';
   const est={pendiente:['En revisión','e-pend'],activo:['Activa','e-ok'],vencido:['Plan vencido','e-pend'],sancionado:['Suspendida','e-mal'],bloqueado:['Bloqueada','e-mal'],rechazado:['Rechazada','e-mal']}[v.estado]||['—','e-gris'];
-  if(v.estado!=='activo'&&t!=='plan'&&t!=='seguridad'&&t!=='perfil'){
+  if(v.estado!=='activo'&&!['plan','seguridad','perfil','soporte'].includes(t)){
     body=`<div class="h-dash"><h2>Hola, ${esc(v.nombre_publico)}</h2></div><div class="caja" style="text-align:center;padding:40px"><div style="font-size:52px">${v.estado==='pendiente'?'⏳':'⚠️'}</div><h3 class="serif" style="color:var(--verde);font-size:26px;margin:8px 0">Tu cuenta está: <span class="estado ${est[1]}">${est[0]}</span></h3>
       <p style="color:var(--gris);max-width:480px;margin:0 auto">${v.estado==='pendiente'?`Estamos revisando tus documentos${gratis?'':' y tu pago'}. Te avisamos en máximo ${esc(CONFIG.horas_activacion||24)} horas.`:v.estado==='vencido'?(gratis?'Tus 30 días gratis terminaron y tu publicación está oculta. Elige un plan para seguir publicando.':'Tu plan venció y tus publicaciones están ocultas. Renueva tu plan para volver a mostrarlas.'):v.estado==='rechazado'?'Tu solicitud no fue aprobada. Escríbenos desde Ayuda para saber qué falta.':'Tu cuenta tiene una restricción. Escríbenos desde Ayuda.'}</p>
       ${v.estado==='vencido'?`<button class="btn btn-p" style="margin-top:14px" data-sub="plan">${gratis?'Elegir un plan':'Renovar plan'}</button>`:''}</div>`;
@@ -514,6 +540,7 @@ async function vPanel(){
       ${gratis?cajaMejorar():v.oficial?'':`<div class="caja"><b>${pl.pago_unico?'Pagar una nueva publicación':'Renovar mi plan'}</b><p style="color:var(--gris);font-size:14.5px;margin:4px 0 14px">Lo activamos en máximo ${esc(CONFIG.horas_activacion||24)} horas después de subir el pantallazo.</p>${bloquePago(cop(v.pago_anual?pl.precio*10:pl.precio),pl.pago_unico?'la publicación dura 60 días':v.pago_anual?'por 12 meses más':'por 1 mes más','<input type="file" hidden data-renovar accept="image/*,application/pdf">')}</div>`}
       ${(pagos||[]).length?`<table class="tabla"><tr><th>Fecha</th><th>Valor</th><th>Estado</th></tr>${pagos.map(x=>`<tr><td>${fechaCO(x.created_at.slice(0,10))}</td><td>${cop(x.valor)}</td><td><span class="estado ${x.estado==='confirmado'?'e-ok':x.estado==='rechazado'?'e-mal':'e-pend'}">${x.estado==='confirmado'?'Confirmado':x.estado==='rechazado'?'Rechazado':'Por confirmar'}</span></td></tr>`).join('')}</table>`:''}`;}
   else if(t==='seguridad') body='<div class="h-dash"><h2>Correo y contraseña</h2></div>'+vSeguridad();
+  else if(t==='soporte') body=await vSoporteUsuario();
   return `<div class="wrap"><div class="dash"><aside class="side"><div class="quien quien-av"><div class="av av-s">${avatar(v)}</div><div><b>${esc(v.nombre_publico)}</b><small>${esc(pl.nombre)}${v.oficial?' · Oficial':''}</small></div></div>${menuLateral(tabs,t)}<button data-vend="${v.id}"><span class="ic">👁</span><span class="tx">Ver mi perfil público</span></button><button data-salir><span class="ic">🚪</span><span class="tx">Cerrar sesión</span></button></aside><div>${body}</div></div></div>`;
 }
 function cajaMejorar(){
@@ -571,7 +598,7 @@ async function vAdmin(){
   if(!esAdmin()) return `<div class="wrap"><div class="vacio" style="margin:40px 0">Esta sección es solo para administración.</div></div>`;
   const cnt=async (t,f)=>{let q=sb.from(t).select('*',{count:'exact',head:true});q=f(q);const {count}=await q;return count||0};
   const [nSol,nPag,nMod,nTic,nRep]=await Promise.all([cnt('vendedores',q=>q.eq('estado','pendiente')),cnt('pagos',q=>q.eq('estado','pendiente')),cnt('publicaciones',q=>q.eq('estado','revision')),cnt('tickets',q=>q.eq('estado','abierto')),cnt('reportes',q=>q.eq('estado','pendiente'))]);
-  const tabs=[['resumen','🏠','Inicio'],['§','Por revisar'],['sol','✅','Verificaciones',nSol],['pagos','💳','Pagos de planes',nPag],['mod','🛡️','Moderación',nMod],['soporte','🛟','Soporte',nTic],['rep','🚩','Reportes',nRep],['§','Administrar'],['vend','🏡','Vendedores'],['§','Ajustes'],['config','⚙️','Configuración'],['seguridad','🔐','Correo y contraseña']];
+  const tabs=[['resumen','🏠','Inicio'],['§','Por revisar'],['sol','✅','Verificaciones',nSol],['pagos','💳','Pagos de planes',nPag],['mod','🛡️','Moderación',nMod],['soporte','🛟','Soporte',nTic],['rep','🚩','Reportes',nRep],['§','Administrar'],['vend','🏡','Vendedores'],['publi','📣','Publicidad'],['§','Ajustes'],['config','⚙️','Configuración'],['seguridad','🔐','Correo y contraseña']];
   const t=tabs.some(x=>x[0]===S.sub)?S.sub:'resumen'; let body='';
   if(t==='resumen'){const [{count:nv},{count:np},{count:nu}]=await Promise.all([sb.from('vendedores').select('*',{count:'exact',head:true}).eq('estado','activo'),sb.from('publicaciones').select('*',{count:'exact',head:true}).eq('estado','activo'),sb.from('profiles').select('*',{count:'exact',head:true})]);
     body=`<div class="h-dash"><h2>Panel de administración</h2></div><div class="accesos">${[['sol','✅','Cuentas por verificar',nSol],['pagos','💳','Pagos por confirmar',nPag],['soporte','🛟','Casos de soporte',nTic],['mod','🛡️','Publicaciones en revisión',nMod]].map(([k,i,n,x])=>`<button class="acceso ${x?'hay':''}" data-sub="${k}"><span>${i}</span><b>${x}</b><small>${n}</small></button>`).join('')}</div>
@@ -589,14 +616,44 @@ async function vAdmin(){
   if(t==='mod'){const {data}=await sb.from('publicaciones').select(SELECT_PUB).eq('estado','revision').order('created_at');const {data:rp}=await sb.from('razas_propuestas').select('*').order('created_at');
     body=`<div class="h-dash"><h2>Moderación</h2></div><div class="caja">${(data||[]).map(p=>`<div class="sol"><div class="av">${catDe(p.categoria_id).emoji}</div><div><b>${esc(p.titulo)}</b><div style="color:var(--gris);font-size:14px">${esc(catDe(p.categoria_id).nombre)} · ${esc(p.raza||'')} · ${esc(p.vendedor?p.vendedor.nombre_publico:'')}</div><div class="prev-fotos">${(p.fotos||[]).slice(0,4).map(f=>`<img src="${esc(fotoUrl(f))}">`).join('')}</div></div><div class="acciones"><button class="btn btn-v btn-s" data-modok="${p.id}">Aprobar</button><button class="btn btn-o btn-s" style="color:var(--mal)" data-modno="${p.id}">Rechazar</button></div></div>`).join('')||'<div class="vacio">No hay publicaciones en revisión 🎉</div>'}</div>
       ${(rp||[]).length?`<div class="caja"><b>Razas propuestas por vendedores</b>${rp.map(r=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--linea)"><span>${catDe(r.categoria_id).emoji} <b>${esc(r.nombre)}</b> · ${esc(catDe(r.categoria_id).nombre)}</span><span class="acciones"><button class="btn btn-v btn-s" data-razaok="${r.id}" data-cat="${r.categoria_id}" data-nombre="${esc(r.nombre)}">Agregar</button><button class="btn btn-o btn-s" data-razano="${r.id}">Descartar</button></span></div>`).join('')}</div>`:''}`}
-  if(t==='soporte'){const {data}=await sb.from('tickets').select('*, respuestas:ticket_respuestas(*)').order('created_at',{ascending:false}).limit(50);
-    body=`<div class="h-dash"><h2>Soporte</h2></div>${(data||[]).map(x=>`<div class="caja"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><b>${esc(x.tipo)}</b> · <span style="color:var(--gris)">${esc(x.nombre||'')} · ${esc(x.contacto||'')}</span>${x.referencia?`<div style="font-size:13.5px;color:var(--gris)">Sobre: ${esc(x.referencia)}</div>`:''}</div><span class="estado ${x.estado==='abierto'?'e-pend':x.estado==='respondido'?'e-ok':'e-gris'}">${x.estado}</span></div><p style="margin:10px 0;white-space:pre-line">${esc(x.mensaje)}</p>${(x.respuestas||[]).map(r=>`<div class="bur yo" style="max-width:100%;margin-left:0">${esc(r.texto)}</div>`).join('')}
-      ${x.estado!=='cerrado'?`<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><input class="campo" id="tr-${x.id}" placeholder="Respuesta (se guarda aquí; escríbele también a su correo)" style="flex:1;min-width:200px"><button class="btn btn-v btn-s" data-tresp="${x.id}">Responder</button><button class="btn btn-o btn-s" data-tcerrar="${x.id}">Cerrar caso</button></div>`:''}</div>`).join('')||'<div class="vacio">No hay casos de soporte 🎉</div>'}`}
+  if(t==='soporte'){const f=S.filtroT||'abierto';const {data}=await sb.from('tickets').select('*, respuestas:ticket_respuestas(*)').order('created_at',{ascending:false}).limit(80);
+    const L=(data||[]).filter(x=>f==='todos'||x.estado===f), n=k=>(data||[]).filter(x=>x.estado===k).length;
+    body=`<div class="h-dash"><h2>Soporte</h2></div>
+    <div class="chips" style="margin-bottom:14px">${[['abierto','Por responder'],['respondido','Respondidos'],['cerrado','Cerrados'],['todos','Todos']].map(([k,nm])=>`<button class="chip ${f===k?'on':''}" data-filtrot="${k}">${nm}${k!=='todos'?' ('+n(k)+')':''}</button>`).join('')}</div>
+    ${L.map(x=>{const e=ESTADO_T[x.estado]||ESTADO_T.abierto;return `<div class="caja"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><b>${esc(x.tipo||'Caso')}</b> <small style="color:var(--gris)">#${x.id}</small> · <span style="color:var(--gris)">${esc(x.nombre||'')} · ${esc(x.contacto||'')}</span>${x.referencia?`<div style="font-size:13.5px;color:var(--gris)">Sobre: ${esc(x.referencia)}</div>`:''}</div><span class="estado ${e[1]}">${e[0]}</span></div>
+      ${x.usuario_id?'':`<div class="aviso" style="margin:10px 0 0">✉️ Esta persona escribió <b>sin cuenta</b>, así que no ve las respuestas en la página. Respóndele a su correo: ${/@/.test(x.contacto||'')?`<a class="lk" href="mailto:${esc(x.contacto)}?subject=${encodeURIComponent('Tu caso en La Cría #'+x.id)}">${esc(x.contacto)}</a>`:esc(x.contacto||'(no dejó correo)')}</div>`}
+      ${hiloTicket(x,true)}
+      <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px">${x.estado==='cerrado'?`<button class="btn btn-o btn-s" data-treabrir="${x.id}">Reabrir caso</button>`:`<button class="btn btn-o btn-s" data-tcerrar="${x.id}">Cerrar caso</button>`}</div></div>`}).join('')||'<div class="vacio">No hay casos aquí 🎉</div>'}`}
   if(t==='rep'){const {data}=await sb.from('reportes').select('*, publicacion:publicaciones(id,titulo)').order('created_at',{ascending:false}).limit(50);
     body=`<div class="h-dash"><h2>Reportes</h2></div><table class="tabla"><tr><th>Publicación</th><th>Motivo</th><th>Detalle</th><th>Estado</th><th></th></tr>${(data||[]).map(r=>`<tr><td>${r.publicacion?`<button class="link" data-animal="${r.publicacion.id}">${esc(r.publicacion.titulo)}</button>`:'(eliminada)'}</td><td>${esc(r.motivo)}</td><td>${esc(r.detalle||'')}</td><td><span class="estado ${r.estado==='pendiente'?'e-mal':'e-ok'}">${r.estado}</span></td><td class="acciones">${r.estado==='pendiente'?`${r.publicacion?`<button class="btn btn-o btn-s" style="color:var(--mal)" data-repquitar="${r.id}" data-pub="${r.publicacion.id}">Quitar publicación</button>`:''}<button class="btn btn-o btn-s" data-repdesc="${r.id}">Descartar</button>`:''}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--gris)">Sin reportes</td></tr>'}</table>`}
   if(t==='vend'){const {data}=await sb.from('vendedores').select('*').order('created_at',{ascending:false});
     body=`<div class="h-dash"><h2>Vendedores</h2></div><table class="tabla"><tr><th>Vendedor</th><th>Plan</th><th>Vence</th><th>Estado</th><th></th></tr>${(data||[]).map(v=>`<tr><td><b>${esc(v.nombre_publico)}</b>${v.oficial?' <span class="sello-o">★ Oficial</span>':''}<br><small style="color:var(--gris)">${esc(v.municipio||'')}, ${esc(v.departamento||'')}</small></td><td>${esc(planDe(v.plan).nombre)}${v.pago_anual?' (anual)':''}</td><td>${v.oficial?'—':fechaCO(v.vence)}</td><td><span class="estado ${v.estado==='activo'?'e-ok':v.estado==='pendiente'||v.estado==='vencido'?'e-pend':'e-mal'}">${v.estado}</span></td>
       <td class="acciones">${v.estado!=='activo'?`<button class="btn btn-v btn-s" data-vest="${v.id}" data-val="activo">Activar</button>`:`<button class="btn btn-o btn-s" data-vest="${v.id}" data-val="vencido">Desactivar plan</button>`}<button class="btn btn-o btn-s" data-voficial="${v.id}" data-val="${v.oficial?0:1}">${v.oficial?'Quitar oficial':'Hacer oficial'}</button><button class="btn btn-o btn-s" style="color:var(--mal)" data-vest="${v.id}" data-val="sancionado">Suspender</button><button class="btn btn-o btn-s" style="color:var(--mal)" data-vest="${v.id}" data-val="bloqueado">Bloquear</button></td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--gris)">Aún no hay vendedores</td></tr>'}</table>`}
+  if(t==='publi'){const {data}=await sb.from('banners').select('*').order('created_at',{ascending:false});const L=data||[];const E=S.banEdit;
+    const ed=E?(E==='nuevo'?{ubicacion:'ambas',activo:true,desde:hoyISO()}:L.find(x=>x.id==E)||{}):null;
+    const prev=S.banImg?URL.createObjectURL(S.banImg):ed&&ed.imagen?fotoUrl(ed.imagen):'';
+    body=`<div class="h-dash"><h2>Publicidad</h2>${E?'':'<button class="btn btn-p btn-s" data-bannuevo>➕ Nuevo banner</button>'}</div>
+    <div class="caja" style="background:var(--crema);font-size:14.5px">📣 Aquí manejan los banners de las marcas del sector (concentrados, veterinarias, accesorios, transporte…). Cada banner es una <b>imagen</b>: cuando alguien le hace clic, lo lleva a la página o al WhatsApp de la marca. Se muestran en el inicio y/o en la búsqueda, y si hay varios van rotando solos.</div>
+    ${ed?`<div class="caja" id="banform"><b>${E==='nuevo'?'Nuevo banner':'Editar banner'}</b>
+      <div class="form-g" style="margin-top:12px">
+        <div class="f full"><label>Imagen del banner *</label>
+          <div class="ban-prev">${prev?`<img src="${esc(prev)}" alt="">`:'<span>Aquí verás la imagen</span>'}</div>
+          <label class="btn btn-o btn-s" style="display:inline-block;cursor:pointer;margin-top:8px">⬆ ${prev?'Cambiar imagen':'Subir imagen'}<input type="file" hidden accept="image/*" data-banimg></label>
+          <small style="display:block;margin-top:6px">Tamaño recomendado: <b>1200 × 300 píxeles</b> (horizontal, 4 a 1). JPG o PNG, máximo 10 MB. Que el texto importante quede en el centro.</small></div>
+        <div class="f"><label>Marca o anunciante *</label><input class="campo" id="bn-an" value="${esc(ed.anunciante||'')}" placeholder="Ej: Concentrados El Campo"></div>
+        <div class="f"><label>Enlace de la marca *</label><input class="campo" id="bn-en" value="${esc(ed.enlace||'')}" placeholder="www.marca.com o 3001234567"><small>Página web, Instagram o un número de WhatsApp</small></div>
+        <div class="f"><label>Dónde se muestra</label><select class="campo" id="bn-ub">${[['ambas','Inicio y búsqueda'],['inicio','Solo en el inicio'],['explorar','Solo en la búsqueda']].map(([k,n])=>`<option value="${k}" ${ed.ubicacion===k?'selected':''}>${n}</option>`).join('')}</select></div>
+        <div class="f"><label>Valor cobrado (COP)</label><input class="campo" id="bn-va" type="number" value="${esc(ed.valor??'')}" placeholder="Solo lo ven ustedes"></div>
+        <div class="f"><label>Desde</label><input class="campo" id="bn-de" type="date" value="${esc(ed.desde||'')}"></div>
+        <div class="f"><label>Hasta</label><input class="campo" id="bn-ha" type="date" value="${esc(ed.hasta||'')}"><small>Ese día deja de mostrarse solo</small></div>
+        <div class="f full"><label>Descripción corta (opcional)</label><input class="campo" id="bn-tx" value="${esc(ed.texto&&ed.texto!==ed.anunciante?ed.texto:'')}" placeholder="Ej: 20% de descuento en concentrado para cerdos"><small>No se ve en la imagen; ayuda a personas con lector de pantalla y a Google.</small></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn btn-o" data-bancancelar>Cancelar</button><button class="btn btn-p" data-banguardar id="banbtn">Guardar banner</button></div></div>`:''}
+    ${L.length?`<div class="ban-lista">${L.map(b=>{const e=estadoBanner(b);return `<div class="caja ban-item"><div class="ban-mini">${b.imagen?`<img src="${esc(fotoUrl(b.imagen))}" alt="">`:`<span>${esc(b.emoji||'📣')}</span>`}</div>
+      <div style="flex:1;min-width:200px"><b>${esc(b.anunciante)}</b> <span class="estado ${e[1]}">${e[0]}</span>
+        <div style="font-size:13.5px;color:var(--gris);margin-top:4px">${{ambas:'Inicio y búsqueda',inicio:'Inicio',explorar:'Búsqueda'}[b.ubicacion]||b.ubicacion} · ${b.desde?fechaCO(b.desde):'sin inicio'} → ${b.hasta?fechaCO(b.hasta):'sin fin'}${b.valor?' · '+cop(b.valor):''}</div>
+        <div style="font-size:13.5px;margin-top:4px">👆 <b>${b.clics||0}</b> ${(b.clics||0)===1?'clic':'clics'} · <span style="color:var(--gris);word-break:break-all">${esc(b.enlace||'sin enlace')}</span></div></div>
+      <div class="acciones"><button class="btn btn-o btn-s" data-baneditar="${b.id}">Editar</button><button class="btn btn-o btn-s" data-banactivo="${b.id}" data-val="${b.activo?0:1}">${b.activo?'Pausar':'Activar'}</button><button class="btn btn-o btn-s" style="color:var(--mal)" data-banborrar="${b.id}">Eliminar</button></div></div>`}).join('')}</div>`:(ed?'':'<div class="vacio">Todavía no hay banners. Toca “➕ Nuevo banner” para crear el primero.</div>')}`}
   if(t==='config') body=`<div class="h-dash"><h2>Configuración</h2></div><div class="caja"><b>💳 Cobro de planes por Bre-B</b><div class="form-g" style="margin-top:10px"><div class="f"><label>Llave Bre-B</label><input class="campo" id="cf-llave" value="${esc(CONFIG.llave_breb||'')}"></div><div class="f"><label>Titular que verá el vendedor</label><input class="campo" id="cf-tit" value="${esc(CONFIG.titular_breb||'')}"></div><div class="f"><label>Horas para activar</label><input class="campo" id="cf-hor" type="number" value="${esc(CONFIG.horas_activacion||24)}"></div>
     <div class="f full"><label>Código QR de la llave Bre-B</label><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">${CONFIG.qr_breb?`<div class="pago-qr"><img src="${esc(fotoUrl(CONFIG.qr_breb))}" alt=""></div>`:'<div class="pago-qr" style="width:150px;height:150px;justify-content:center"><small>Sin QR todavía</small></div>'}<div style="flex:1;min-width:200px"><label class="btn btn-o btn-s" style="display:inline-block;cursor:pointer">⬆ ${CONFIG.qr_breb?'Cambiar':'Subir'} imagen del QR<input type="file" accept="image/*" hidden data-subirqr></label>${CONFIG.qr_breb?' <button class="btn btn-o btn-s" data-quitarqr>Quitar</button>':''}<small style="display:block;margin-top:8px">Descárguenlo desde la app del banco donde registraron la llave (opción “Mi QR” o “Compartir llave”). Les sale a los vendedores al pagar y al renovar.</small></div></div></div></div></div>
     <div class="caja"><b>🏷️ Precios de los planes</b><div class="form-g" style="margin-top:10px">${PLANES.map(p=>`<div class="f"><label>${p.emoji} ${esc(p.nombre)} ${p.pago_unico?'(por publicación)':'(mensual)'}</label><input class="campo" type="number" data-cfplan="${p.id}" value="${p.precio}"></div>`).join('')}</div></div>
@@ -621,6 +678,7 @@ const urlBase = () => location.origin + location.pathname;
 /* =====================================================================
    EVENTOS
    ===================================================================== */
+document.addEventListener('click', e=>{const a=e.target.closest('a[data-banclic]');if(a)sb.rpc('sumar_clic_banner',{p_id:Number(a.dataset.banclic)}).then(()=>{},()=>{})},true);
 document.addEventListener('click', async e=>{
   if(!e.target.closest('.campana-w')) $('#pnotif').classList.remove('on');
   const b=e.target.closest('button,a[data-legal],[data-vfoto]'); if(!b) return; const d=b.dataset;
@@ -667,6 +725,20 @@ document.addEventListener('click', async e=>{
   if(d.mejorar){S.cambio={plan:d.mejorar,anual:false};render();return}
   if(d.mejoraranual){S.cambio.anual=d.mejoraranual==='1';render();return}
   if(d.quitaravatar){const vend=d.quitaravatar==='logo';const {error}=vend?await sb.from('vendedores').update({logo:null}).eq('id',S.yo.id):await sb.from('profiles').update({foto:null}).eq('id',S.sesion.user.id);if(error){err(error);return}await cargarSesion();toast('Foto quitada');render();return}
+  if(d.bannuevo!==undefined){S.banEdit='nuevo';S.banImg=null;render();return}
+  if(d.baneditar){S.banEdit=d.baneditar;S.banImg=null;render();return}
+  if(d.bancancelar!==undefined){S.banEdit=null;S.banImg=null;render();return}
+  if(d.banactivo){const {error}=await sb.from('banners').update({activo:d.val==='1'}).eq('id',d.banactivo);if(error){err(error);return}await cargarBase();toast(d.val==='1'?'Banner activado':'Banner pausado');render();return}
+  if(d.banborrar){if(!b.dataset.ok){b.dataset.ok='1';b.textContent='¿Seguro? Toca otra vez';return}const {error}=await sb.from('banners').delete().eq('id',d.banborrar);if(error){err(error);return}await cargarBase();toast('Banner eliminado');render();return}
+  if(d.banguardar!==undefined){const g=id=>$('#'+id).value.trim(),E=S.banEdit,an=g('bn-an'),en=g('bn-en');
+    if(!an||!en){toast('Escribe la marca y el enlace');return}
+    if(E==='nuevo'&&!S.banImg){toast('Sube la imagen del banner');return}
+    const de=g('bn-de')||null,ha=g('bn-ha')||null;if(de&&ha&&ha<de){toast('La fecha “Hasta” debe ser después de “Desde”');return}
+    const btn=$('#banbtn');btn.disabled=true;btn.textContent='Guardando…';
+    try{const reg={anunciante:an,enlace:en,ubicacion:g('bn-ub'),valor:g('bn-va')?Number(g('bn-va')):null,desde:de,hasta:ha,texto:g('bn-tx')||an};
+      if(S.banImg)reg.imagen=await subir('fotos',S.sesion.user.id,await reducirImagen(S.banImg,1600),true);
+      const r=E==='nuevo'?await sb.from('banners').insert({...reg,activo:true}):await sb.from('banners').update(reg).eq('id',E);if(r.error)throw r.error;
+      S.banEdit=null;S.banImg=null;await cargarBase();toast('✅ Banner guardado');render()}catch(x){err(x,'No se pudo guardar el banner');btn.disabled=false;btn.textContent='Guardar banner'}return}
   if(d.ptipo){S.pub.tipo=d.ptipo;render();return}
   if(d.destacar){const {error}=await sb.from('publicaciones').update({destacado:d.val==='1'}).eq('id',d.destacar);if(error){err(error);return}render();return}
   if(d.pubest){const {error}=await sb.from('publicaciones').update({estado:d.val}).eq('id',d.pubest);if(error){err(error);return}render();return}
@@ -683,7 +755,9 @@ document.addEventListener('click', async e=>{
   if(d.modno){await sb.from('publicaciones').update({estado:'rechazado'}).eq('id',d.modno);toast('Publicación rechazada');render();return}
   if(d.razaok){await sb.from('razas').insert({categoria_id:d.cat,nombre:d.nombre});await sb.from('razas_propuestas').delete().eq('id',d.razaok);await cargarBase();toast('Raza agregada');render();return}
   if(d.razano){await sb.from('razas_propuestas').delete().eq('id',d.razano);render();return}
-  if(d.tresp){const i=$('#tr-'+d.tresp);if(!i.value.trim())return;await sb.from('ticket_respuestas').insert({ticket_id:Number(d.tresp),autor_id:S.sesion.user.id,texto:i.value.trim()});await sb.from('tickets').update({estado:'respondido'}).eq('id',d.tresp);toast('Respuesta guardada');render();return}
+  if(d.tresp){const i=$('#tr-'+d.tresp);if(!i.value.trim()){toast('Escribe el mensaje');return}b.disabled=true;const {error}=await sb.from('ticket_respuestas').insert({ticket_id:Number(d.tresp),autor_id:S.sesion.user.id,texto:i.value.trim()});b.disabled=false;if(error){err(error,'No se pudo enviar');return}toast(esAdmin()?'✅ Respuesta enviada. Le llega el aviso a su campanita.':'✅ Mensaje enviado al equipo de La Cría');render();return}
+  if(d.filtrot){S.filtroT=d.filtrot;render();return}
+  if(d.treabrir){await sb.from('tickets').update({estado:'abierto'}).eq('id',d.treabrir);render();return}
   if(d.tcerrar){await sb.from('tickets').update({estado:'cerrado'}).eq('id',d.tcerrar);render();return}
   if(d.repquitar){await sb.from('publicaciones').update({estado:'rechazado'}).eq('id',d.pub);await sb.from('reportes').update({estado:'resuelto'}).eq('id',d.repquitar);toast('Publicación quitada');render();return}
   if(d.repdesc){await sb.from('reportes').update({estado:'descartado'}).eq('id',d.repdesc);render();return}
@@ -694,7 +768,7 @@ document.addEventListener('click', async e=>{
   if(d.quitarqr!==undefined){const {error}=await sb.from('config').upsert({clave:'qr_breb',valor:''});if(error){err(error);return}await cargarBase();toast('QR quitado');render();return}
   // soporte, reportes, compartir
   if(d.soporte!==undefined){modalSoporte();return}
-  if(d.senviar!==undefined){const m=$('#smsg').value.trim();if(!m){toast('Cuéntanos qué pasó');return}const {error}=await sb.from('tickets').insert({usuario_id:S.sesion?S.sesion.user.id:null,nombre:$('#snom').value.trim(),contacto:$('#scor').value.trim(),tipo:$('#stipo').value,referencia:$('#sref').value.trim(),mensaje:m});if(error){err(error,'No se pudo enviar');return}cerrar();toast('🛟 Recibimos tu caso. Te responderemos a tu correo.');return}
+  if(d.senviar!==undefined){const m=$('#smsg').value.trim();if(!m){toast('Cuéntanos qué pasó');return}const {error}=await sb.from('tickets').insert({usuario_id:S.sesion?S.sesion.user.id:null,nombre:$('#snom').value.trim(),contacto:$('#scor').value.trim(),tipo:$('#stipo').value,referencia:$('#sref').value.trim(),mensaje:m});if(error){err(error,'No se pudo enviar');return}cerrar();if(S.sesion){toast('🛟 Recibimos tu caso. Te respondemos en “Ayuda y soporte” de tu cuenta.');if(['panel','micuenta'].includes(S.view)&&S.sub==='soporte')render()}else toast('🛟 Recibimos tu caso. Te responderemos a tu correo.');return}
   if(d.reportar){modalReportar(d.reportar);return}
   if(d.envrep){const {error}=await sb.from('reportes').insert({publicacion_id:Number(d.envrep),usuario_id:S.sesion?S.sesion.user.id:null,motivo:$('#rmot').value,detalle:$('#rdet').value.trim()});if(error){err(error);return}cerrar();toast('Reporte enviado. Lo revisaremos pronto.');return}
   if(d.compartir){modalCompartir(urlBase()+'#animal-'+d.compartir,'esta publicación');return}
@@ -727,6 +801,7 @@ document.addEventListener('change',async e=>{
   if(t.id==='pfotos'){const malos=[];for(const f of t.files){const m=validarArchivo(f,true);if(m)malos.push(m);else if(S.pub.fotos.length<8)S.pub.fotos.push(f);else malos.push(f.name+' (máximo 8 fotos)')}if(malos.length)toast('No se pudo subir: '+malos.join(', '));$('#prevf').innerHTML=prevFotos();t.value=''}
   if(d.arch){const k=d.arch,multi=t.multiple,malos=[];let l=multi?listaArch(k).slice():[];for(const f of t.files){const m=validarArchivo(f,k==='fotos');if(m){malos.push(m);continue}if(multi&&l.length>=(ARCH_MAX[k]||6)){malos.push(f.name+' (máximo '+(ARCH_MAX[k]||6)+')');continue}if(multi)l.push(f);else l=[f]}
     if(malos.length)toast('No se pudo subir: '+malos.join(', '));if(!l.length)return;guardarPasoRegSilencioso();S.reg.arch[k]=multi?l:l[0];render()}
+  if(d.banimg!==undefined){const f=t.files[0];if(!f)return;const m=validarArchivo(f,true);if(m){toast('No se pudo subir: '+m);return}S.banImg=f;const pv=$('#banform .ban-prev');if(pv)pv.innerHTML=`<img src="${URL.createObjectURL(f)}" alt="">`;t.closest('label').firstChild.textContent='⬆ Cambiar imagen';return}
   if(d.subiravatar){const f=t.files[0];if(!f)return;const m=validarArchivo(f,true);if(m){toast('No se pudo subir: '+m);return}try{toast('Subiendo foto…');const vend=d.subiravatar==='logo',uid=S.sesion.user.id;const r=await subir('fotos',uid,await fotoCuadrada(f),true);const {error}=vend?await sb.from('vendedores').update({logo:r}).eq('id',uid):await sb.from('profiles').update({foto:r}).eq('id',uid);if(error)throw error;await cargarSesion();toast('✅ Foto guardada');render()}catch(x){err(x,'No se pudo subir la foto')}return}
   if(d.subirqr!==undefined){const f=t.files[0];if(!f)return;try{toast('Subiendo QR…');const r=await subir('fotos',S.sesion.user.id,f,true);const {error}=await sb.from('config').upsert({clave:'qr_breb',valor:r});if(error)throw error;await cargarBase();toast('✅ QR guardado');render()}catch(x){err(x,'No se pudo subir el QR')}return}
   if(d.renovar!==undefined){const f=t.files[0];if(!f)return;try{const v=S.yo,cam=esGratis(planDe(v.plan))&&S.cambio,np=cam?S.cambio.plan:v.plan,an=cam?!!S.cambio.anual:v.pago_anual,pl=planDe(np);toast('Subiendo comprobante…');const r=await subir('comprobantes',v.id,f);const {error}=await sb.from('pagos').insert({vendedor_id:v.id,plan:np,pago_anual:an,valor:an?pl.precio*10:pl.precio,comprobante:r});if(error)throw error;toast('Comprobante enviado. Te avisamos cuando se confirme.');render()}catch(x){err(x,'No se pudo subir')}}
@@ -736,6 +811,8 @@ $('#velo').addEventListener('click',e=>{if(e.target.id==='velo')cerrar()});
 /* =====================================================================
    INICIO
    ===================================================================== */
+/* revisa avisos nuevos de la campanita cada minuto, sin recargar la pantalla */
+setInterval(async()=>{if(!S.sesion||document.hidden)return;const antes=S.notifs.filter(x=>!x.leida).length;await cargarNotifs();pintarCampana();const ahora=S.notifs.filter(x=>!x.leida).length;if(ahora>antes)toast('🔔 Tienes un aviso nuevo')},60000);
 (async function iniciar(){
   try{ await cargarBase(); await cargarSesion(); }
   catch(e){ $('#app').innerHTML=`<div class="wrap"><div class="vacio" style="margin:40px 0">😕 No pudimos conectar con La Cría. Revisa tu internet e intenta de nuevo.<br><small>${esc(e.message||e)}</small></div></div>`; return; }
