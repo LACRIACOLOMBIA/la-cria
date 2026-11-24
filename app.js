@@ -101,10 +101,13 @@ async function cargarNotifs(){
   const q=sb.from('notificaciones').select('*').order('created_at',{ascending:false}).limit(40);
   const {data}=await q; S.notifs=(data||[]).filter(n=>esAdmin()?true:!n.para_admin);
 }
-sb.auth.onAuthStateChange(async (ev)=>{
+sb.auth.onAuthStateChange(async (ev,ses)=>{
   if(ev==='PASSWORD_RECOVERY'){modalNuevaClave();return}
   if(S.enviando) return;
-  if(ev==='SIGNED_IN'||ev==='SIGNED_OUT'||ev==='USER_UPDATED'){await cargarSesion();render()}
+  const antes=S.sesion&&S.sesion.user.id, ahora=ses&&ses.user.id;
+  if(ev==='TOKEN_REFRESHED'||(ev==='SIGNED_IN'&&antes&&antes===ahora)){S.sesion=ses;return}  // solo se renovó la sesión: no recargar la pantalla
+  if(ev==='USER_UPDATED'){S.sesion=ses;pintarAuth();return}
+  if(ev==='SIGNED_IN'||ev==='SIGNED_OUT'){await cargarSesion();render()}
 });
 
 /* =====================================================================
@@ -180,6 +183,7 @@ async function vInicio(){
 }
 function bannersHtml(list){const enl=l=>{l=(l||'').trim();if(!l)return'';const d=l.replace(/\D/g,'');if(!/[a-z]/i.test(l)&&d.length>=7)return'https://wa.me/'+(d.length===10?'57'+d:d);return/^https?:\/\//i.test(l)?l:'https://'+l};
   return `<div class="banners">${list.map(x=>`<div class="banner-ad" style="background:${esc(x.color||'#2F5A42')}"><span class="em">${esc(x.emoji||'📣')}</span><div style="flex:1"><small>Publicidad · ${esc(x.anunciante)}</small><b>${esc(x.texto)}</b></div>${enl(x.enlace)?`<a class="btn btn-s" style="background:#fff;color:${esc(x.color)};text-decoration:none" href="${esc(enl(x.enlace))}" target="_blank" rel="noopener sponsored">${esc(x.boton||'Ver más')}</a>`:''}</div>`).join('')}</div>`}
+const urlWeb = w => { w=String(w||'').trim(); return /^https?:\/\//i.test(w)?w:'https://'+w };
 const avatar = (v,emoji) => v&&v.logo ? `<img src="${esc(fotoUrl(v.logo))}" alt="">` : (emoji||planDe(v&&v.plan).emoji||'🐾');
 function crc(v){return `<button class="crc" data-vend="${v.id}"><div class="av">${avatar(v)}</div><div><b>${esc(v.nombre_publico)}</b><small>${esc(v.municipio||'')}${v.municipio?', ':''}${esc(v.departamento||'')}</small><div style="margin-top:5px">${sellos(v)}</div></div></button>`}
 
@@ -261,12 +265,12 @@ async function vVendedor(){
   const [{data:v},{data:pubs}]=await Promise.all([sb.from('vendedores').select('*').eq('id',S.param).maybeSingle(), sb.from('publicaciones').select(SELECT_PUB).eq('vendedor_id',S.param).eq('estado','activo').order('created_at',{ascending:false})]);
   if(!v) return `<div class="wrap"><div class="vacio" style="margin:40px 0">Este vendedor no está disponible.</div></div>`;
   const wa=(v.whatsapp||'').replace(/\D/g,''), waN=wa.length===10?'57'+wa:wa;
-  return `<div class="portada"><span>${planDe(v.plan).emoji||'🐾'}</span></div><div class="wrap">
+  return `<div class="portada"><span>${(v.especies||[]).length?catDe(v.especies[0]).emoji:(planDe(v.plan).emoji||'🐾')}</span></div><div class="wrap">
     <div class="perfil-cab"><div class="av">${avatar(v)}</div><div style="padding-bottom:6px"><div style="margin-bottom:6px">${sellos(v)}</div><h1>${esc(v.nombre_publico)}</h1><div style="color:var(--gris)">📍 ${esc(v.municipio||'')}${v.municipio?', ':''}${esc(v.departamento||'')}${v.anios?` · ${v.anios} años`:''}</div></div>
       <div style="margin-left:auto;display:flex;gap:8px;padding-bottom:6px">${waN?`<a class="btn btn-wa" style="text-decoration:none" href="https://wa.me/${waN}" target="_blank" rel="noopener">💬 WhatsApp</a>`:''}<button class="btn btn-o" data-compartir-v="${v.id}">🔗 Compartir</button></div></div>
     <div class="perfil-datos"><div class="panel"><h3 class="serif" style="color:var(--verde);margin-bottom:8px">Sobre ${v.plan==='fundacion'?'la fundación':'el vendedor'}</h3><p style="white-space:pre-line">${esc(v.descripcion||'')}</p>
       <div style="margin-top:14px;display:flex;gap:6px;flex-wrap:wrap">${(v.especies||[]).map(x=>`<span class="tag" style="background:var(--crema)">${catDe(x).emoji} ${esc(catDe(x).nombre)}</span>`).join('')}</div></div>
-      <div class="panel">${v.whatsapp?`<div class="linea-dato">📱 <span>${esc(v.whatsapp)}</span></div>`:''}${v.instagram?`<div class="linea-dato">📸 <span>@${esc(v.instagram.replace(/^@/,''))}</span></div>`:''}${v.envios?`<div class="linea-dato">🚚 <span>${esc(v.envios)}</span></div>`:''}${v.llave_donaciones?`<div class="linea-dato">💜 <span>Donaciones: ${esc(v.llave_donaciones)}</span></div>`:''}</div></div>
+      <div class="panel">${v.whatsapp?`<div class="linea-dato">📱 ${waN?`<a class="lk-dato" href="https://wa.me/${waN}" target="_blank" rel="noopener">${esc(v.whatsapp)}</a>`:`<span>${esc(v.whatsapp)}</span>`}</div>`:''}${v.instagram?`<div class="linea-dato">📸 <a class="lk-dato" href="https://instagram.com/${encodeURIComponent(v.instagram.replace(/^@/,'').trim())}" target="_blank" rel="noopener">@${esc(v.instagram.replace(/^@/,''))}</a></div>`:''}${v.web?`<div class="linea-dato">🌐 <a class="lk-dato" href="${esc(urlWeb(v.web))}" target="_blank" rel="noopener">${esc(v.web.replace(/^https?:\/\//,'').replace(/\/$/,''))}</a></div>`:''}${v.envios?`<div class="linea-dato">🚚 <span>${esc(v.envios)}</span></div>`:''}${v.llave_donaciones?`<div class="linea-dato">💜 <span>Donaciones: ${esc(v.llave_donaciones)}</span></div>`:''}</div></div>
     <div class="tit"><h2>${v.plan==='fundacion'||v.plan==='adopcion'?'Buscan hogar':'Disponibles'} (${(pubs||[]).length})</h2></div>
     <div class="grid" style="margin-bottom:40px">${(pubs||[]).map(tarjeta).join('')||'<div class="vacio">Aún no tiene publicaciones activas.</div>'}</div></div>`;
 }
@@ -501,7 +505,7 @@ async function vPanel(){
         <td class="acciones">${limDest&&p.estado==='activo'?`<button class="btn btn-o btn-s" data-destacar="${p.id}" data-val="${p.destacado?0:1}">${p.destacado?'★ Quitar destacado':'☆ Destacar'}</button>`:''}${['activo','pausado'].includes(p.estado)?`<button class="btn btn-o btn-s" data-pubest="${p.id}" data-val="${adop?'adoptado':'vendido'}">${adop?'Marcar adoptado':'Marcar vendido'}</button>`:''}${['vendido','adoptado'].includes(p.estado)?`<button class="btn btn-o btn-s" data-pubest="${p.id}" data-val="activo">Reactivar</button>`:''}${p.estado==='activo'?`<button class="btn btn-o btn-s" data-animal="${p.id}">Ver</button>`:''}<button class="btn btn-o btn-s" style="color:var(--mal)" data-pubdel="${p.id}">Eliminar</button></td></tr>`}).join('')}</table>`:'<div class="vacio">Aún no tienes publicaciones. ¡Publica tu primer animal!</div>'}`;
   else if(t==='nueva') body = activas.length>=lim ? `<div class="h-dash"><h2>Publicar</h2></div><div class="caja"><h3 class="serif" style="color:var(--verde)">Llegaste al límite de tu plan</h3><p style="margin:8px 0 14px">Tu plan ${esc(pl.nombre)} permite ${lim} ${lim===1?'publicación activa':'publicaciones activas'}. ${pl.pago_unico?'Para publicar otra, paga una nueva publicación desde “Mi plan”.':'Marca como vendidas las que ya no estén disponibles o cambia de plan.'}</p><button class="btn btn-p" data-sub="plan">Ir a Mi plan</button></div>` : vPublicar(v,pl);
   else if(t==='perfil') body=`<div class="h-dash"><h2>Mi perfil</h2><button class="btn btn-o btn-s" data-vend="${v.id}">Ver como comprador</button></div>${cajaFoto(v.logo,'logo')}<div class="caja form-g">
-      <div class="f full"><label>Nombre público</label><input class="campo" id="pf-n" value="${esc(v.nombre_publico)}"></div><div class="f"><label>WhatsApp</label><input class="campo" id="pf-w" value="${esc(v.whatsapp)}"></div>${gratis?'':`<div class="f"><label>Instagram</label><input class="campo" id="pf-i" value="${esc(v.instagram)}"></div>`}
+      <div class="f full"><label>Nombre público</label><input class="campo" id="pf-n" value="${esc(v.nombre_publico)}"></div><div class="f"><label>WhatsApp</label><input class="campo" id="pf-w" value="${esc(v.whatsapp)}"></div>${gratis?'':`<div class="f"><label>Instagram</label><input class="campo" id="pf-i" placeholder="@tucriadero" value="${esc(v.instagram)}"></div><div class="f full"><label>Página web (opcional)</label><input class="campo" id="pf-web" placeholder="www.tucriadero.com" value="${esc(v.web)}"></div>`}
       <div class="f"><label>Departamento</label><select class="campo" id="pf-d">${DEPTOS.map(d=>`<option ${v.departamento===d?'selected':''}>${d}</option>`).join('')}</select></div><div class="f"><label>Municipio</label><input class="campo" id="pf-m" value="${esc(v.municipio)}"></div>
       ${gratis?'':`<div class="f full"><label>Envíos o entrega</label><input class="campo" id="pf-e" value="${esc(v.envios)}"></div>`}${v.plan==='fundacion'?`<div class="f full"><label>Llave Bre-B para donaciones</label><input class="campo" id="pf-don" value="${esc(v.llave_donaciones)}"></div>`:''}
       <div class="f full"><label>Descripción</label><textarea class="campo" id="pf-desc" rows="4">${esc(v.descripcion)}</textarea></div><div class="full" style="text-align:right"><button class="btn btn-p" data-guardarperfil>Guardar cambios</button></div></div>`;
@@ -667,7 +671,7 @@ document.addEventListener('click', async e=>{
   if(d.destacar){const {error}=await sb.from('publicaciones').update({destacado:d.val==='1'}).eq('id',d.destacar);if(error){err(error);return}render();return}
   if(d.pubest){const {error}=await sb.from('publicaciones').update({estado:d.val}).eq('id',d.pubest);if(error){err(error);return}render();return}
   if(d.pubdel){if(!b.dataset.ok){b.dataset.ok='1';b.textContent='¿Seguro? Toca otra vez';return}const {error}=await sb.from('publicaciones').delete().eq('id',d.pubdel);if(error){err(error);return}toast('Publicación eliminada');render();return}
-  if(d.guardarperfil!==undefined){const g=id=>$('#'+id)?$('#'+id).value.trim():undefined;const upd={nombre_publico:g('pf-n'),whatsapp:g('pf-w'),instagram:g('pf-i'),departamento:g('pf-d'),municipio:g('pf-m'),envios:g('pf-e'),descripcion:g('pf-desc')};if(g('pf-don')!==undefined)upd.llave_donaciones=g('pf-don');const {error}=await sb.from('vendedores').update(upd).eq('id',S.yo.id);if(error){err(error);return}await cargarSesion();toast('Perfil guardado');return}
+  if(d.guardarperfil!==undefined){const g=id=>$('#'+id)?$('#'+id).value.trim():undefined;const upd={nombre_publico:g('pf-n'),whatsapp:g('pf-w'),instagram:g('pf-i'),web:g('pf-web'),departamento:g('pf-d'),municipio:g('pf-m'),envios:g('pf-e'),descripcion:g('pf-desc')};if(g('pf-don')!==undefined)upd.llave_donaciones=g('pf-don');const {error}=await sb.from('vendedores').update(upd).eq('id',S.yo.id);if(error){err(error);return}await cargarSesion();toast('Perfil guardado');return}
   // admin
   if(d.verdoc){await verPrivado('documentos',d.verdoc);return}
   if(d.vercomp){await verPrivado('comprobantes',d.vercomp);return}
