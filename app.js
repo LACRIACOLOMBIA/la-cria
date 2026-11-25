@@ -32,7 +32,7 @@ const CAMPOS = {
   bufalino:['Edad','Peso promedio (kg)','Propósito productivo','Estado reproductivo','Registro genealógico'],
   porcino:['Etapa productiva','Edad','Peso (kg)','Vacunas'], equino:['Edad','Andar','Alzada','Doma','Registro'],
   asnal:['Edad','Alzada','Uso (carga, trabajo, paseo)'], ovino:['Edad','Peso promedio (kg)','Producción'], caprino:['Edad','Peso promedio (kg)','Producción'],
-  camelido:['Edad','Linaje (si está documentado)'], canino:['Edad','Color','Vacunas','Microchip','Pedigrí'], felino:['Edad','Color','Ojos','Vacunas','Pedigrí'],
+  camelido:['Edad','Linaje (si está documentado)'], canino:['Edad','Color','Vacunas','Microchip','Pedigree'], felino:['Edad','Color','Ojos','Vacunas','Pedigree'],
   conejo:['Edad','Color','Peso'], cuy:['Edad','Color'], peqmam:['Edad','Color'], gallinas:['Edad','Línea'], patos:['Edad'], pavos:['Edad'], palomas:['Edad','Línea'],
   aveorn:['Edad','Anillo / documento de origen'], abeja:['Tipo (reina, núcleo, paquete, colonia)','Origen'], meliponas:['Especie científica','Nombre común','N.º de autorización'],
   peces:['Etapa / tamaño','Sistema de cultivo','Permiso AUNAP / origen'], pecesorn:['Etapa / tamaño','Permiso AUNAP / origen'], crustaceos:['Etapa / tamaño','Sistema de cultivo','Permiso AUNAP / origen'],
@@ -308,7 +308,7 @@ async function vAnimal(){
     <div style="color:var(--gris)">📍 ${esc(v.municipio||'')}${v.municipio?', ':''}${esc(v.departamento||'')} <small>(ubicación aproximada)</small> · ${p.cantidad>1?p.cantidad+' disponibles':'1 disponible'}</div>
     ${(p.finalidades||[]).filter(k=>k!=='a').length?`<b style="font-size:14px">Finalidad del ejemplar</b><div class="docs" style="margin-bottom:12px">${p.finalidades.filter(k=>k!=='a').map(k=>{const f=FINES.find(x=>x[0]===k);return `<span class="doc fin-doc">${f?f[1]+' ':''}${esc(PROP[k]||k)}</span>`}).join('')}</div>`:''}
     ${(p.aptitudes||[]).length?`<b style="font-size:14px">Aptitud, disciplina o especialidad</b><div class="docs" style="margin-bottom:12px">${p.aptitudes.map(x=>`<span class="doc fin-doc">🎯 ${esc(x)}</span>`).join('')}</div>`:''}
-    <div class="fichas"><div><small>Raza / variedad</small><b>${esc(p.raza||'—')}</b></div><div><small>Tipo</small><b>${TIPOS[p.tipo]||'—'}</b></div>${p.sexo?`<div><small>Sexo</small><b>${esc(p.sexo)}</b></div>`:''}${Object.entries(p.atributos||{}).filter(([k,x])=>x).map(([k,x])=>`<div><small>${esc(k)}</small><b>${esc(x)}</b></div>`).join('')}</div>
+    <div class="fichas"><div><small>Raza / variedad</small><b>${esc(p.raza||'—')}</b></div><div><small>Tipo</small><b>${TIPOS[p.tipo]||'—'}</b></div>${p.sexo?`<div><small>Sexo</small><b>${esc(p.sexo)}</b></div>`:''}${Object.entries(p.atributos||{}).map(([k,x])=>[k==='Pedigrí'?'Pedigree':k,x]).filter(([k,x])=>x).map(([k,x])=>`<div><small>${esc(k)}</small><b>${esc(x)}</b></div>`).join('')}</div>
     ${(p.documentos||[]).length?`<b style="font-size:14px">Documentos que entrega</b><div class="docs">${p.documentos.map(d=>`<span class="doc">✓ ${esc(d)}</span>`).join('')}</div>`:''}
     ${PRODUCCION.includes(p.categoria_id)?'<div class="aviso">🚚 <b>Movilización:</b> para trasladar este animal el vendedor debe tramitar la Guía Sanitaria de Movilización Interna (GSMI) del ICA.</div>':''}
     ${ACUI.includes(p.categoria_id)?'<div class="aviso">🐟 <b>Acuicultura:</b> el vendedor debe contar con permisos de la AUNAP o certificado de origen.</div>':''}
@@ -719,7 +719,7 @@ async function editarPublicacion(id){
     padres:{padre:conv(pad.padre),madre:conv(pad.madre)},
     vals:{t:p.titulo,sexo:p.sexo,cant:p.cantidad,precio:p.precio??'',unidad:p.unidad||'',desc:p.descripcion||'',props:p.finalidades||[],
       apt:(p.aptitudes||[]).filter(x=>apts.includes(x)).concat((p.aptitudes||[]).some(x=>!apts.includes(x))?['__otra']:[]),
-      aptotra:(p.aptitudes||[]).filter(x=>!apts.includes(x)).join(', '),docs:p.documentos||[],at:p.atributos||{}}};
+      aptotra:(p.aptitudes||[]).filter(x=>!apts.includes(x)).join(', '),docs:p.documentos||[],at:Object.fromEntries(Object.entries(p.atributos||{}).map(([k,x])=>[k==='Pedigrí'?'Pedigree':k,x]))}};
   S.sub='nueva'; render(); window.scrollTo({top:0});
 }
 async function publicar(form){
