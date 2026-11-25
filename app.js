@@ -123,9 +123,19 @@ async function cargarSesion(){
   const {data:{session}}=await sb.auth.getSession(); S.sesion=session; S.perfil=null; S.yo=null;
   if(session){
     const [p,v]=await Promise.all([sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle(), sb.from('vendedores').select('*').eq('id',session.user.id).maybeSingle()]);
-    S.perfil=p.data; S.yo=v.data; await Promise.all([cargarNotifs(),contarNoLeidos()]);
+    S.perfil=p.data; S.yo=v.data;
+    const pf=S.perfil, hoy=hoyISO();
+    if(pf&&pf.rol!=='admin'&&pf.estado_cuenta&&pf.estado_cuenta!=='activa'&&!(pf.estado_cuenta==='suspendida'&&pf.sancion_hasta&&pf.sancion_hasta<hoy)){
+      S.bloqueo={estado:pf.estado_cuenta,motivo:pf.motivo_sancion,hasta:pf.sancion_hasta};
+      await sb.auth.signOut(); S.sesion=null; S.perfil=null; S.yo=null; S.notifs=[]; return;
+    }
+    await Promise.all([cargarNotifs(),contarNoLeidos()]);
   }
 }
+function avisoBloqueo(){if(!S.bloqueo)return;const b=S.bloqueo;S.bloqueo=null;
+  modal(`<div style="text-align:center"><div style="font-size:52px">${b.estado==='bloqueada'?'⛔':'⏸️'}</div><h3>Tu cuenta está ${b.estado==='bloqueada'?'bloqueada':'suspendida'}</h3>
+    <p style="color:var(--gris);margin-top:8px">${b.motivo?'<b>Motivo:</b> '+esc(b.motivo)+'<br>':''}${b.estado==='suspendida'&&b.hasta?'La suspensión termina el <b>'+fechaCO(b.hasta)+'</b>.<br>':''}Si crees que es un error, escríbenos desde el botón <b>Ayuda</b>.</p>
+    <button class="btn btn-p" style="margin-top:14px" data-soporte>Escribir a soporte</button></div>`)}
 async function cargarNotifs(){
   if(!S.sesion){S.notifs=[];return}
   const q=sb.from('notificaciones').select('*').order('created_at',{ascending:false}).limit(40);
@@ -137,7 +147,7 @@ sb.auth.onAuthStateChange(async (ev,ses)=>{
   const antes=S.sesion&&S.sesion.user.id, ahora=ses&&ses.user.id;
   if(ev==='TOKEN_REFRESHED'||(ev==='SIGNED_IN'&&antes&&antes===ahora)){S.sesion=ses;return}  // solo se renovó la sesión: no recargar la pantalla
   if(ev==='USER_UPDATED'){S.sesion=ses;pintarAuth();return}
-  if(ev==='SIGNED_IN'||ev==='SIGNED_OUT'){await cargarSesion();render()}
+  if(ev==='SIGNED_IN'||ev==='SIGNED_OUT'){await cargarSesion();render();avisoBloqueo()}
 });
 
 /* =====================================================================
@@ -798,21 +808,21 @@ async function vAdmin(){
     body=`<div class="h-dash"><h2>Reportes</h2></div><table class="tabla"><tr><th>Publicación</th><th>Motivo</th><th>Detalle</th><th>Estado</th><th></th></tr>${(data||[]).map(r=>`<tr><td>${r.publicacion?`<button class="link" data-animal="${r.publicacion.id}">${esc(r.publicacion.titulo)}</button>`:'(eliminada)'}</td><td>${esc(r.motivo)}</td><td>${esc(r.detalle||'')}</td><td><span class="estado ${r.estado==='pendiente'?'e-mal':'e-ok'}">${r.estado}</span></td><td class="acciones">${r.estado==='pendiente'?`${r.publicacion?`<button class="btn btn-o btn-s" style="color:var(--mal)" data-repquitar="${r.id}" data-pub="${r.publicacion.id}">Quitar publicación</button>`:''}<button class="btn btn-o btn-s" data-repdesc="${r.id}">Descartar</button>`:''}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--gris)">Sin reportes</td></tr>'}</table>`}
   if(t==='vend'){const {data}=await sb.from('vendedores').select('*').order('created_at',{ascending:false});
     body=`<div class="h-dash"><h2>Vendedores</h2></div><table class="tabla"><tr><th>Vendedor</th><th>Plan</th><th>Vence</th><th>Estado</th><th></th></tr>${(data||[]).map(v=>`<tr><td><b>${esc(v.nombre_publico)}</b>${v.oficial?' <span class="sello-o">★ Oficial</span>':''}<br><small style="color:var(--gris)">${esc(v.municipio||'')}, ${esc(v.departamento||'')}</small></td><td>${esc(planDe(v.plan).nombre)}${v.pago_anual?' (anual)':''}</td><td>${v.oficial?'—':fechaCO(v.vence)}</td><td><span class="estado ${v.estado==='activo'?'e-ok':v.estado==='pendiente'||v.estado==='vencido'?'e-pend':'e-mal'}">${v.estado}</span></td>
-      <td class="acciones">${v.estado!=='activo'?`<button class="btn btn-v btn-s" data-vest="${v.id}" data-val="activo">Activar</button>`:`<button class="btn btn-o btn-s" data-vest="${v.id}" data-val="vencido">Desactivar plan</button>`}<button class="btn btn-o btn-s" data-voficial="${v.id}" data-val="${v.oficial?0:1}">${v.oficial?'Quitar oficial':'Hacer oficial'}</button><button class="btn btn-o btn-s" style="color:var(--mal)" data-vest="${v.id}" data-val="sancionado">Suspender</button><button class="btn btn-o btn-s" style="color:var(--mal)" data-vest="${v.id}" data-val="bloqueado">Bloquear</button></td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--gris)">Aún no hay vendedores</td></tr>'}</table>`}
+      <td class="acciones">${['sancionado','bloqueado'].includes(v.estado)?'':v.estado!=='activo'?`<button class="btn btn-v btn-s" data-vest="${v.id}" data-val="activo">Activar</button>`:`<button class="btn btn-o btn-s" data-vest="${v.id}" data-val="vencido">Desactivar plan</button>`}<button class="btn btn-o btn-s" data-voficial="${v.id}" data-val="${v.oficial?0:1}">${v.oficial?'Quitar oficial':'Hacer oficial'}</button>${['sancionado','bloqueado'].includes(v.estado)?`<button class="btn btn-v btn-s" data-sancion="activa" data-uid="${v.id}">Reactivar cuenta</button>`:`<button class="btn btn-o btn-s" style="color:var(--mal)" data-sancion="suspendida" data-uid="${v.id}">⏸️ Suspender</button><button class="btn btn-o btn-s" style="color:var(--mal)" data-sancion="bloqueada" data-uid="${v.id}">⛔ Bloquear</button>`}<button class="btn btn-o btn-s" style="color:var(--mal)" data-eliminarcta="${v.id}">🗑 Eliminar</button></td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--gris)">Aún no hay vendedores</td></tr>'}</table>`}
   if(t==='usuarios'){const [{data:us},{data:vs}]=await Promise.all([sb.from('profiles').select('*').order('created_at',{ascending:false}).limit(1000),sb.from('vendedores').select('id,nombre_publico,plan,estado,oficial,verificacion,vence,municipio,departamento,whatsapp,created_at')]);
     const V={};(vs||[]).forEach(v=>V[v.id]=v);const L=us||[];const f=S.filtroU||'todos';S.cacheU={L,V};
     const tipo=u=>u.rol==='admin'?'admin':V[u.id]?'vendedor':'comprador';
     const n=k=>L.filter(u=>tipo(u)===k).length;
-    const lista=L.filter(u=>f==='todos'||tipo(u)===f);
+    const lista=L.filter(u=>f==='todos'||(f==='sancion'?u.estado_cuenta&&u.estado_cuenta!=='activa':tipo(u)===f));
     const wa=w=>{const d=String(w||'').replace(/\D/g,'');return d?(d.length===10?'57'+d:d):''};
     body=`<div class="h-dash"><h2>Personas registradas</h2></div>
     <div class="kpis" style="grid-template-columns:repeat(4,1fr)"><div class="kpi"><small>Total</small><b>${L.length}</b></div><div class="kpi"><small>Compradores</small><b>${n('comprador')}</b></div><div class="kpi"><small>Vendedores</small><b>${n('vendedor')}</b></div><div class="kpi"><small>Administración</small><b>${n('admin')}</b></div></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><div class="chips">${[['todos','Todos'],['comprador','Compradores'],['vendedor','Vendedores'],['admin','Administración']].map(([k,nm])=>`<button class="chip ${f===k?'on':''}" data-filtrou="${k}">${nm}</button>`).join('')}</div><input class="campo" id="busu" placeholder="🔎 Buscar por nombre, correo, celular o departamento" style="flex:1;min-width:240px"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><div class="chips">${[['todos','Todos'],['comprador','Compradores'],['vendedor','Vendedores'],['admin','Administración'],['sancion','Suspendidas o bloqueadas']].map(([k,nm])=>`<button class="chip ${f===k?'on':''}" data-filtrou="${k}">${nm}${k==='sancion'?' ('+L.filter(u=>u.estado_cuenta&&u.estado_cuenta!=='activa').length+')':''}</button>`).join('')}</div><input class="campo" id="busu" placeholder="🔎 Buscar por nombre, correo, celular o departamento" style="flex:1;min-width:240px"></div>
     <table class="tabla" id="tablau"><tr><th>Persona</th><th>Contacto</th><th>Departamento</th><th>Tipo</th><th>Se registró</th><th></th></tr>
     ${lista.map(u=>{const v=V[u.id],tp=tipo(u);return `<tr data-busca="${esc(norm([u.nombre,u.correo,u.whatsapp,u.departamento,v&&v.nombre_publico].join(' ')))}"><td><b>${esc(u.nombre||'(sin nombre)')}</b>${v?`<br><button class="link" style="font-size:13px" data-vend="${v.id}">🏡 ${esc(v.nombre_publico)}</button>`:''}</td>
       <td style="font-size:14px">${u.correo?`<a class="lk" href="mailto:${esc(u.correo)}">${esc(u.correo)}</a>`:'—'}${u.whatsapp?`<br>${wa(u.whatsapp)?`<a class="lk" href="https://wa.me/${wa(u.whatsapp)}" target="_blank" rel="noopener">📱 ${esc(u.whatsapp)}</a>`:esc(u.whatsapp)}`:''}</td>
       <td>${esc(u.departamento||'—')}</td>
-      <td><span class="estado ${tp==='admin'?'e-gris':tp==='vendedor'?'e-ok':'e-pend'}">${tp==='admin'?'Administración':tp==='vendedor'?'Vendedor':'Comprador'}</span>${v?`<br><small style="color:var(--gris)">Plan ${esc(planDe(v.plan).nombre)} · ${esc(v.estado)}${v.oficial?' · Oficial':''}</small>`:''}</td>
+      <td><span class="estado ${tp==='admin'?'e-gris':tp==='vendedor'?'e-ok':'e-pend'}">${tp==='admin'?'Administración':tp==='vendedor'?'Vendedor':'Comprador'}</span>${u.estado_cuenta&&u.estado_cuenta!=='activa'?` <span class="estado e-mal">${u.estado_cuenta==='bloqueada'?'⛔ Bloqueada':'⏸️ Suspendida'}</span>`:''}${v?`<br><small style="color:var(--gris)">Plan ${esc(planDe(v.plan).nombre)} · ${esc(v.estado)}${v.oficial?' · Oficial':''}</small>`:''}</td>
       <td style="font-size:14px">${fechaCO(String(u.created_at).slice(0,10))}</td><td><button class="btn btn-o btn-s" data-verpersona="${u.id}">Ver detalles</button></td></tr>`}).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--gris)">No hay personas en este grupo</td></tr>'}</table>
     <p style="font-size:12.5px;color:var(--gris);margin-top:10px">🔒 Estos datos son personales: úsenlos solo para atender a la persona y según la Política de datos de La Cría.</p>`}
   if(t==='publi'){const {data}=await sb.from('banners').select('*').order('created_at',{ascending:false});const L=data||[];const E=S.banEdit;
@@ -893,7 +903,7 @@ document.addEventListener('click', async e=>{
   // cuentas
   if(d.login!==undefined){modalLogin();return}
   if(d.gocrear!==undefined){cerrar();go('crear');return}
-  if(d.entrar!==undefined){const {error}=await sb.auth.signInWithPassword({email:$('#lcor').value.trim().toLowerCase(),password:$('#lpas').value});if(error){$('#lerr').textContent=error.message.includes('confirm')?'Primero confirma tu correo con el enlace que te enviamos.':'Correo o contraseña incorrectos';return}cerrar();await cargarSesion();S.sub='resumen';go(S.despues||(esAdmin()?'admin':S.yo?'panel':'inicio'));S.despues=null;toast('¡Hola de nuevo!');return}
+  if(d.entrar!==undefined){const {error}=await sb.auth.signInWithPassword({email:$('#lcor').value.trim().toLowerCase(),password:$('#lpas').value});if(error){$('#lerr').textContent=error.message.includes('confirm')?'Primero confirma tu correo con el enlace que te enviamos.':'Correo o contraseña incorrectos';return}cerrar();await cargarSesion();if(!S.sesion){render();avisoBloqueo();return}S.sub='resumen';go(S.despues||(esAdmin()?'admin':S.yo?'panel':'inicio'));S.despues=null;toast('¡Hola de nuevo!');return}
   if(d.salir!==undefined){await sb.auth.signOut();S.sesion=null;S.perfil=null;S.yo=null;go('inicio');toast('Cerraste sesión');return}
   if(d.olvide!==undefined){modalOlvide();return}
   if(d.olvenviar!==undefined){const c=$('#ocor').value.trim().toLowerCase();if(!c){toast('Escribe tu correo');return}const {error}=await sb.auth.resetPasswordForEmail(c,{redirectTo:urlBase()});if(error){err(error,'No se pudo enviar');return}modal('<div style="text-align:center"><div style="font-size:52px">📧</div><h3>Revisa tu correo</h3><p style="color:var(--gris);margin-top:8px">Si ese correo tiene cuenta en La Cría, te llegó un enlace para crear una contraseña nueva. Revisa también la carpeta de spam.</p></div>');return}
@@ -969,7 +979,23 @@ document.addEventListener('click', async e=>{
       ${fila('Se registró',new Date(u.created_at).toLocaleString('es-CO',{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit'}))}
       ${fila('Acepta promociones',u.acepta_promos===false?'No':'Sí')}
       ${v?fila('Nombre público',esc(v.nombre_publico))+fila('Plan',esc(planDe(v.plan).nombre))+fila('Estado de la cuenta',esc(v.estado))+fila('Verificación',{pendiente:'⏳ Pendiente',verificado:'✓ Verificado',rechazado:'✕ Rechazado'}[v.verificacion]||'—')+fila('Vence',v.oficial?'Tienda oficial':fechaCO(v.vence))+fila('Ubicación',esc([v.municipio,v.departamento].filter(Boolean).join(', '))):''}
-      </div>${v?`<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn btn-o btn-s" data-vend="${v.id}">Ver perfil público</button><button class="btn btn-o btn-s" data-irsol="1">Verificar vendedores</button></div>`:''}`);return}
+      ${fila('Estado de la cuenta en La Cría',u.estado_cuenta==='bloqueada'?'⛔ Bloqueada':u.estado_cuenta==='suspendida'?'⏸️ Suspendida'+(u.sancion_hasta?' hasta el '+fechaCO(u.sancion_hasta):''):'✅ Activa')}${u.motivo_sancion?fila('Motivo de la sanción',esc(u.motivo_sancion)):''}
+      </div>${v?`<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><button class="btn btn-o btn-s" data-vend="${v.id}">Ver perfil público</button><button class="btn btn-o btn-s" data-irsol="1">Verificar vendedores</button></div>`:''}
+      ${u.rol==='admin'?'':`<div class="sancion-box"><b>Sanciones</b><small>Úsalas cuando la persona incumpla los Términos o las Reglas de publicación.</small><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${u.estado_cuenta&&u.estado_cuenta!=='activa'?`<button class="btn btn-v btn-s" data-sancion="activa" data-uid="${u.id}">✅ Reactivar cuenta</button>`:`<button class="btn btn-o btn-s" style="color:var(--mal)" data-sancion="suspendida" data-uid="${u.id}">⏸️ Suspender</button><button class="btn btn-o btn-s" style="color:var(--mal)" data-sancion="bloqueada" data-uid="${u.id}">⛔ Bloquear</button>`}<button class="btn btn-o btn-s" style="color:var(--mal)" data-eliminarcta="${u.id}">🗑 Eliminar cuenta</button></div></div>`}`);return}
+  if(d.sancion){const est=d.sancion,uid=d.uid;
+    if(est==='activa'){const {error}=await sb.rpc('sancionar',{p_usuario:uid,p_estado:'activa',p_motivo:null,p_hasta:null});if(error){err(error);return}cerrar();toast('✅ Cuenta reactivada');render();return}
+    modal(`<h3>${est==='bloqueada'?'⛔ Bloquear cuenta':'⏸️ Suspender cuenta'}</h3><p style="color:var(--gris);margin:6px 0 10px">${est==='bloqueada'?'La persona no podrá entrar a La Cría y sus publicaciones se ocultan. Úsalo en casos graves (estafa, fauna silvestre, maltrato).':'La persona no podrá entrar ni publicar mientras dure la suspensión, y sus publicaciones se ocultan. Si pones fecha de fin, la cuenta se reactiva sola ese día.'}</p>
+      <label style="font-weight:700;font-size:14px">Motivo (la persona lo verá) *</label><textarea class="campo" id="sanmot" rows="3" placeholder="Ej: Publicó un animal de fauna silvestre, lo cual está prohibido por las Reglas de publicación."></textarea>
+      ${est==='suspendida'?'<label style="font-weight:700;font-size:14px;display:block;margin-top:10px">Suspender hasta (opcional)</label><input class="campo" id="sanhasta" type="date">':''}
+      <button class="btn btn-p" style="width:100%;margin-top:14px;background:var(--mal)" data-confsancion="${est}" data-uid="${uid}">${est==='bloqueada'?'Bloquear cuenta':'Suspender cuenta'}</button>`);return}
+  if(d.confsancion){const m=$('#sanmot').value.trim();if(!m){toast('Escribe el motivo');return}const h=$('#sanhasta')?$('#sanhasta').value||null:null;if(h&&h<=hoyISO()){toast('La fecha de fin debe ser después de hoy');return}
+    const {error}=await sb.rpc('sancionar',{p_usuario:d.uid,p_estado:d.confsancion,p_motivo:m,p_hasta:h});if(error){err(error,'No se pudo aplicar');return}cerrar();toast(d.confsancion==='bloqueada'?'⛔ Cuenta bloqueada':'⏸️ Cuenta suspendida');render();return}
+  if(d.eliminarcta){modal(`<h3>🗑 Eliminar cuenta</h3><p style="color:var(--gris);margin:6px 0 10px">Se borran la cuenta, el perfil, las publicaciones, los mensajes y los favoritos. <b>No se puede deshacer.</b> Para casos de incumplimiento normalmente es mejor <b>bloquear</b>, así la persona no puede volver a registrarse con ese correo.</p>
+      <label style="font-weight:700;font-size:14px">Motivo *</label><textarea class="campo" id="elimot" rows="2" placeholder="Ej: Solicitud de la persona / estafa comprobada"></textarea>
+      <label style="font-weight:700;font-size:14px;display:block;margin-top:10px">Para confirmar escribe ELIMINAR</label><input class="campo" id="eliconf" placeholder="ELIMINAR">
+      <button class="btn btn-p" style="width:100%;margin-top:14px;background:var(--mal)" data-confeliminar="${d.eliminarcta}">Eliminar definitivamente</button>`);return}
+  if(d.confeliminar){const m=$('#elimot').value.trim();if(!m){toast('Escribe el motivo');return}if($('#eliconf').value.trim().toUpperCase()!=='ELIMINAR'){toast('Escribe ELIMINAR para confirmar');return}
+    b.disabled=true;const {error}=await sb.rpc('eliminar_cuenta',{p_usuario:d.confeliminar,p_motivo:m});b.disabled=false;if(error){err(error,'No se pudo eliminar');return}cerrar();toast('🗑 Cuenta eliminada');render();return}
   if(d.irsol){cerrar();S.sub='sol';S.filtroV='todos';render();return}
   if(d.filtrou){S.filtroU=d.filtrou;render();return}
   if(d.filtrot){S.filtroT=d.filtrot;render();return}
@@ -1034,6 +1060,7 @@ $('#velo').addEventListener('click',e=>{if(e.target.id==='velo')cerrar()});
 /* revisa avisos nuevos de la campanita cada minuto, sin recargar la pantalla */
 setInterval(async()=>{if(!S.sesion||document.hidden)return;const antes=S.notifs.filter(x=>!x.leida).length;await Promise.all([cargarNotifs(),contarNoLeidos()]);pintarCampana();pintarBadgeChat();const ahora=S.notifs.filter(x=>!x.leida).length;if(ahora>antes)toast('🔔 Tienes un aviso nuevo')},60000);
 (async function iniciar(){
+  sb.rpc('levantar_suspensiones').then(()=>{},()=>{});
   try{ await cargarBase(); await cargarSesion(); }
   catch(e){ $('#app').innerHTML=`<div class="wrap"><div class="vacio" style="margin:40px 0">😕 No pudimos conectar con La Cría. Revisa tu internet e intenta de nuevo.<br><small>${esc(e.message||e)}</small></div></div>`; return; }
   const h=(location.hash||'').slice(1);
@@ -1042,5 +1069,5 @@ setInterval(async()=>{if(!S.sesion||document.hidden)return;const antes=S.notifs.
   else if(h.startsWith('legal-')){S.view='legal';S.param=h.slice(6)}
   else if(['explorar','categorias','planes','crear','vendedores'].includes(h)) S.view=h;
   try{history.replaceState({...fotoNav(),lc:1},'')}catch(e){}
-  render();
+  render();avisoBloqueo();
 })();
