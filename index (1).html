@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La Cría · Criadores de Colombia</title>
+<meta name="description" content="Encuentra y publica animales de origen legal en Colombia: ganado, caballos, cerdos, perros, gatos, aves y más. Criaderos y vendedores verificados.">
+<link rel="icon" href="logo.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,800&family=DM+Sans:wght@400;500;600;700&family=Rye&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+<style>
+.cargando{padding:80px 20px;text-align:center;color:var(--gris)}
+.spin{width:34px;height:34px;border:4px solid var(--crema2);border-top-color:var(--terra);border-radius:50%;animation:g 1s linear infinite;margin:0 auto 12px}
+@keyframes g{to{transform:rotate(360deg)}}
+.foto img{width:100%;height:100%;object-fit:cover}
+.galeria .principal img{width:100%;height:100%;object-fit:cover;border-radius:22px}
+.minis img{width:100%;height:100%;object-fit:cover;border-radius:12px;cursor:pointer}
+.prev-fotos{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.prev-fotos img{width:74px;height:74px;object-fit:cover;border-radius:10px}
+.doc-link{color:var(--terra);font-weight:700;text-decoration:underline;cursor:pointer}
+.pago-card{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;background:#fff;border:2px solid var(--verde);border-radius:18px;padding:18px}
+.pago-card:not(:has(.pago-qr)){grid-template-columns:1fr}
+.pago-qr{display:flex;flex-direction:column;align-items:center;gap:6px;background:#fff;border:1px solid var(--linea);border-radius:14px;padding:10px;min-width:150px}
+.pago-qr img{width:150px;height:150px;object-fit:contain}.pago-qr small{font-size:12px;color:var(--gris);text-align:center}
+.pago-datos{display:flex;flex-direction:column;gap:10px}.pago-fila small{display:block;font-size:12px;color:var(--gris);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.pago-llave{font-size:22px;color:var(--verde)}.pago-valor{font-size:28px;color:var(--terra);display:block}
+.pago-pasos{margin:14px 0 10px 20px;font-size:14.5px;line-height:1.7;color:var(--tinta)}
+@media(max-width:560px){.pago-card{grid-template-columns:1fr;text-align:center}.pago-datos div{justify-content:center}}
+.subir-w{display:flex;flex-direction:column;gap:8px}
+.arch-lista{display:flex;flex-direction:column;gap:6px}
+.arch{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--linea);border-radius:12px;padding:8px 10px}
+.arch-mini{width:46px;height:46px;border-radius:8px;overflow:hidden;background:var(--crema);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.arch-mini img{width:100%;height:100%;object-fit:cover}.arch-info{flex:1;min-width:0}.arch-info b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.arch-info small{color:var(--gris);font-size:12px}
+.arch-x{width:30px;height:30px;border-radius:50%;border:1px solid var(--linea);background:#fff;color:var(--mal);font-weight:700;flex:none;cursor:pointer}
+.prev-fotos .pf{position:relative;display:inline-block}.prev-fotos .pf .arch-x{position:absolute;top:4px;right:4px;width:26px;height:26px}
+.pf-p{position:absolute;left:4px;bottom:4px;background:var(--verde);color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px}
+.arch-tit{font-size:12.5px;font-weight:700;color:var(--ok)}
+.av{overflow:hidden}.av img{width:100%;height:100%;object-fit:cover;display:block}
+.av-s{width:44px;height:44px;border-radius:12px;font-size:22px;background:rgba(255,255,255,.12)}
+.quien-av{display:flex;align-items:center;gap:10px}
+.foto-perfil{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.av-g{width:96px;height:96px;border-radius:22px;font-size:46px;border:3px solid var(--linea);background:var(--crema)}
+.av-h{width:40px;height:40px;border-radius:50%;overflow:hidden;border:2px solid var(--terra);padding:0!important;min-width:0!important;flex:none;cursor:pointer;background:var(--crema)}.av-h img{width:100%;height:100%;object-fit:cover;display:block}
+.perfil-cab{align-items:flex-start}
+.perfil-cab>div:not(.av){margin-top:76px}
+.perfil-cab h1{line-height:1.15;margin:2px 0 4px}
+.lk-dato{color:var(--tinta);text-decoration:none;font-weight:600;word-break:break-all}.lk-dato:hover{color:var(--terra);text-decoration:underline}
+@media(max-width:700px){.perfil-cab>div:not(.av){margin-top:0}.perfil-cab>div:not(.av):nth-child(2){margin-top:8px}}
+.banner-img{display:block;position:relative;border-radius:18px;overflow:hidden;line-height:0;background:var(--crema);box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.banner-img img{width:100%;aspect-ratio:4/1;object-fit:cover;display:block;transition:transform .3s}a.banner-img:hover img{transform:scale(1.015)}
+.ban-tag{position:absolute;top:8px;right:10px;background:rgba(0,0,0,.45);color:#fff;font-size:10.5px;line-height:1;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:6px}
+.ban-rot{position:relative}.ban-rot .ban-slide{display:none}.ban-rot .ban-slide.on{display:block;animation:banIn .5s}
+@keyframes banIn{from{opacity:0}to{opacity:1}}
+.ban-puntos{display:flex;justify-content:center;gap:6px;margin-top:8px}.ban-puntos span{width:8px;height:8px;border-radius:50%;background:var(--linea)}.ban-puntos span.on{background:var(--terra)}
+.ban-prev{border:2px dashed var(--linea);border-radius:14px;aspect-ratio:4/1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--crema);color:var(--gris);font-size:14px}.ban-prev img{width:100%;height:100%;object-fit:cover}
+.ban-item{display:flex;gap:16px;align-items:center;flex-wrap:wrap}.ban-mini{width:200px;aspect-ratio:4/1;border-radius:10px;overflow:hidden;background:var(--crema);display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}.ban-mini img{width:100%;height:100%;object-fit:cover}
+@media(max-width:640px){.banner-img img{aspect-ratio:3/1}.ban-mini{width:100%}}
+.hilo{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px}
+.msj{max-width:85%;background:var(--crema);border:1px solid var(--linea);border-radius:14px 14px 14px 4px;padding:9px 13px;white-space:pre-line;font-size:15px}
+.msj small{display:block;font-size:11.5px;color:var(--gris);font-weight:700;margin-bottom:2px;white-space:normal}
+.msj.mio{align-self:flex-end;border-radius:14px 14px 4px 14px;background:#EEF5F0;border-color:#C8DFCF}
+.msj.adm small{color:var(--verde)}
+.resp-box{display:flex;gap:8px;align-items:flex-end;margin-top:10px}.resp-box textarea{flex:1;resize:vertical;min-height:46px}
+.kpi-btn{text-align:left;cursor:pointer;font:inherit;color:inherit;border:1px solid var(--linea)}.kpi-btn:hover{border-color:var(--terra)}.kpi-btn .ver-mas{display:block;font-size:13px;font-weight:700;color:var(--terra);margin-top:4px}
+.barra-volver{padding-top:14px;padding-bottom:0}
+.volver{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:700;font-size:14.5px;color:var(--verde);background:#fff;border:1px solid var(--linea);border-radius:999px;padding:8px 16px;cursor:pointer}.volver:hover{border-color:var(--terra);color:var(--terra)}
+.toggle-anual{display:inline-flex;background:#fff;border:1px solid var(--linea);border-radius:999px;padding:4px;margin-bottom:22px}.toggle-anual button{font:inherit;font-weight:700;border:0;background:none;padding:9px 20px;border-radius:999px;cursor:pointer;color:var(--gris)}.toggle-anual button.on{background:var(--verde);color:#fff}.toggle-anual span{font-size:11px;background:var(--mostaza);color:var(--tinta);border-radius:6px;padding:2px 6px;margin-left:4px}
+.fines{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
+.fin-op{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--linea);border-radius:14px;padding:10px 12px;cursor:pointer;background:#fff}.fin-op:has(input:checked){border-color:var(--terra);background:#FDF3EE}.fin-op input{margin-top:4px;accent-color:var(--terra)}.fin-op b{display:block;font-size:14.5px}.fin-op small{display:block;color:var(--gris);font-size:12.5px;line-height:1.4;margin-top:2px}
+.padres-g{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.padre-card,.padre-pub{border:1px solid var(--linea);border-radius:16px;padding:12px;background:#fff;display:flex;flex-direction:column;gap:7px}
+.padre-tit{font-weight:800;color:var(--verde);font-size:15px}
+.padre-foto{position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:var(--crema)}.padre-foto img{width:100%;height:100%;object-fit:cover}.padre-foto .arch-x{position:absolute;top:6px;right:6px}
+.padre-subir{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:100%;cursor:pointer;font-size:30px;border:2px dashed var(--linea);border-radius:12px}.padre-subir span{font-size:13px;font-weight:700;color:var(--gris)}
+.padre-pub img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px}
+.fin-doc{background:#F3EFE4;color:var(--tinta)}
+.sello-n{display:inline-block;background:#EEE;color:#666;font-size:12.5px;font-weight:700;border-radius:999px;padding:4px 10px}
+.ver-datos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 14px;margin-top:10px}.ver-datos small{display:block;font-size:11.5px;color:var(--gris);font-weight:700;text-transform:uppercase;letter-spacing:.03em}.ver-datos b{font-size:14px;font-weight:600}.ver-datos .full{grid-column:1/-1}
+.ver-estado{display:flex;gap:12px;align-items:flex-start;font-size:22px}.ver-estado b{display:block;font-size:15.5px}.ver-estado small{display:block;font-size:13.5px;color:var(--gris);margin-top:2px}
+.ver-estado.ok{background:#EEF5F0;border-color:#C8DFCF}.ver-estado.mal{background:#FBEAEA;border-color:#EBC4C4}.ver-estado.pend{background:#FFF7E6;border-color:#F0DDB0}
+.det-g{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:12px}.det-f small{display:block;font-size:11.5px;color:var(--gris);font-weight:700;text-transform:uppercase}.det-f b{font-size:14.5px;font-weight:600;word-break:break-word}
+.tag.e{background:#F6E7C1;color:#7A5A12}.tag.d{background:#DDE7F3;color:#294B73}.tag.t{background:#E6E1D6;color:#5A4E36}
+@media(max-width:640px){.padres-g,.det-g{grid-template-columns:1fr}.ver-datos{grid-template-columns:1fr 1fr}}
+.planes-anual{grid-template-columns:repeat(2,minmax(0,360px))!important;justify-content:center}
+.chat{display:grid;grid-template-columns:300px 1fr;border:1px solid var(--linea);border-radius:20px;overflow:hidden;background:#fff;height:min(72vh,680px)}
+.chat-lista{border-right:1px solid var(--linea);overflow-y:auto;background:var(--papel)}
+.chat .conv{display:flex!important;flex-direction:row!important;justify-content:flex-start!important;gap:10px;align-items:center;width:100%;text-align:left!important;padding:12px 14px;border:0;border-bottom:1px solid var(--linea);background:none;font:inherit;cursor:pointer}.conv:hover{background:#fff}.conv.on{background:#FDF3EE}
+.conv b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.conv small{display:block;font-size:12.5px;color:var(--gris);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv .av-s,.chat-cab .av-s{background:var(--crema);color:inherit}
+.conv .badge{background:var(--terra);color:#fff;border-radius:999px;font-size:12px;font-weight:700;padding:2px 8px}
+.chat-panel{display:flex;flex-direction:column;min-height:0}
+.chat-cab{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--linea)}.chat-cab b{display:block}.chat-cab small{color:var(--gris);font-size:12.5px}
+.chat-hilo{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--crema)}
+.chat-hilo .msj{background:#fff}.chat-hilo .msj.mio{background:#EEF5F0}
+.chat-hilo .msj img,.chat-hilo .msj video{display:block;max-width:260px;max-height:320px;border-radius:10px;margin-bottom:4px}
+.msj-h{display:block;font-size:11px;color:var(--gris);margin-top:3px;text-align:right}
+.chat-pie{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;border-top:1px solid var(--linea)}.chat-pie textarea{flex:1;resize:none;min-height:42px;max-height:120px}
+.chat-adj{font-size:22px;cursor:pointer;padding:6px 8px;border-radius:10px}.chat-adj:hover{background:var(--crema)}
+.chat-nota{display:block;padding:0 14px 10px;color:var(--gris);font-size:11.5px}
+@media(max-width:760px){.chat{grid-template-columns:1fr;height:75vh}.chat.con-chat .chat-lista{display:none}.chat:not(.con-chat) .chat-panel{display:none}.planes-anual{grid-template-columns:1fr!important}}
+.sancion-box{margin-top:16px;padding:12px 14px;border:1px solid #EBC4C4;background:#FDF5F5;border-radius:14px}.sancion-box b{display:block}.sancion-box small{display:block;color:var(--gris);font-size:13px}
+.pago-qr{max-width:250px}.pago-qr img{width:220px!important;height:220px!important}.qr-zoom{border:0;background:none;padding:0;cursor:zoom-in;line-height:0}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <button class="logo" data-go="inicio"><img class="simbolo" src="logo.webp" width="92" alt="" style="display:block;height:auto"><span><span class="nombre">LA CRÍA</span><span class="eslogan">CRIADORES DE COLOMBIA</span></span></button>
+  <nav class="menu" id="menu"><span id="authbox" class="authbox"></span></nav>
+  <div class="campana-w"><button class="campana" id="campana" data-campana style="display:none" title="Notificaciones">🔔<span class="nb" id="nb"></span></button><div class="pnotif" id="pnotif"></div></div>
+</div></header>
+
+<main id="app"><div class="cargando"><div class="spin"></div>Cargando La Cría…</div></main>
+
+<footer><div class="wrap">
+  <nav class="pie-legal">
+    <button data-legal="terminos">Términos y condiciones</button>
+    <button data-legal="datos">Tratamiento de datos personales</button>
+    <button data-legal="privacidad">Aviso de privacidad</button>
+    <button data-legal="reglas">Reglas de publicación</button>
+    <button data-legal="vendedores">Condiciones para vendedores</button>
+    <button data-legal="fundaciones">Condiciones de adopción</button>
+    <button data-legal="compra">Compra segura</button>
+    <button data-legal="publicidad">Reglas de publicidad</button>
+    <button data-legal="cookies">Política de cookies</button>
+  </nav>
+  <div class="pie-copy">© 2026 La Cría – Criadores de Colombia. Todos los derechos reservados.</div>
+</div></footer>
+
+<div class="velo" id="velo"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<button class="ayuda-flot" data-soporte>🛟 Ayuda</button>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="legales.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
