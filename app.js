@@ -208,6 +208,7 @@ async function vInicio(){
     <div class="ruta"><span class="em">📍</span><b>Buscar por ubicación</b><p>Elige el departamento y mira los animales que hay allí.</p><select class="campo" id="udepto" style="margin-top:6px"><option value="">Elige el departamento</option>${DEPTOS.map(d=>`<option>${d}</option>`).join('')}</select><button class="btn btn-v btn-s" style="margin-top:8px" data-ubic>Ver animales en esta zona</button></div>
     <button class="ruta" data-foco><span class="em">🔎</span><b>Buscar un animal</b><p>Escribe la especie, la raza o el tipo de ejemplar.</p><span class="link">Ir al buscador →</span></button>
   </div></div></section>
+  <section class="blk" style="padding-bottom:0"><div class="wrap"><div class="cta"><div><h2 class="serif">¿Crías animales? Publícalos y llega a todo el país.</h2><p>Sin comisiones por venta. Elige el plan que se ajusta a ti.</p></div><button class="btn" style="background:#fff;color:var(--terra)" data-go="planes">Ver planes</button></div></div></section>
   <section class="blk"><div class="wrap"><div class="tit"><div><h2>Categorías principales</h2><p>Categoría → raza → publicaciones.</p></div><button class="link" data-go="categorias">Ver todas →</button></div>
     <div class="especies">${pop.map(c=>`<button class="esp" data-cat="${c.id}"><span class="em">${c.emoji}</span><b>${esc(c.nombre)}</b></button>`).join('')}</div></div></section>
   <section class="blk" style="padding-top:0"><div class="wrap"><div class="finalidad"><b>¿Para qué lo buscas?</b>${FINES.map(([k,i,n])=>[k,i,n]).concat([['a','💜','Adopción']]).map(([k,i,n])=>`<button data-prop="${k}">${i} ${n}</button>`).join('')}</div></div></section>
@@ -219,7 +220,7 @@ async function vInicio(){
     <div class="paso"><h3>Busca y filtra</h3><p>Por categoría, raza, ubicación o escribiendo lo que buscas.</p></div><div class="paso"><h3>Conoce al vendedor</h3><p>Mira su perfil, si es particular o profesional, y sus documentos.</p></div>
     <div class="paso"><h3>Escríbele directo</h3><p>Agenda visita o videollamada antes de pagar.</p></div><div class="paso"><h3>Acuerden la compra</h3><p>El pago y la entrega se acuerdan directo con el vendedor.</p></div></div></div></section>
   ${vend&&vend.length?`<section class="blk" style="padding-top:0"><div class="wrap"><div class="tit"><div><h2>Vendedores verificados</h2></div><button class="link" data-go="vendedores">Ver todos →</button></div><div class="criaderos">${vend.map(crc).join('')}</div></div></section>`:''}
-  <section class="blk" style="padding-top:0"><div class="wrap"><div class="cta"><div><h2 class="serif">¿Crías animales? Publícalos y llega a todo el país.</h2><p>Sin comisiones por venta. Elige el plan que se ajusta a ti.</p></div><button class="btn" style="background:#fff;color:var(--terra)" data-go="planes">Ver planes</button></div></div></section>`;
+`;
 }
 const hoyISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function enlaceBanner(l){l=(l||'').trim();if(!l)return'';const d=l.replace(/\D/g,'');if(!/[a-z]/i.test(l)&&d.length>=7)return'https://wa.me/'+(d.length===10?'57'+d:d);return/^https?:\/\//i.test(l)?l:'https://'+l}
