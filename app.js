@@ -42,7 +42,7 @@ function docsReq(id){const d=[];if(['canino','felino','conejo','cuy','peqmam'].i
 const BGS = ['bg-sp0','bg-sp1','bg-sp2','bg-sp3','bg-sp4','bg-sp5'];
 
 /* ---------- estado ---------- */
-function pubVacia(cat){return {cat:cat||'canino',raza:'',tipo:'ind',fotos:[],fotosEx:[],vals:{},padres:{padre:{},madre:{}},edit:null}}
+function pubVacia(cat){return {cat:cat||'canino',raza:'',tipo:'ind',lista:[],video:null,videoEx:null,vals:{},padres:{padre:{},madre:{}},edit:null}}
 const S = {view:'inicio', param:null, f:filtrosVacios(), sub:'resumen', sesion:null, perfil:null, yo:null, notifs:[], verFiltros:false, reg:{paso:1,plan:'criadero',anual:false,esp:[],arch:{}}, pub:pubVacia(), cache:{}};
 let CATS = [], RAZAS = {}, PLANES = [], CONFIG = {}, BANNERS = [], LEGALES_DB = {};
 
@@ -666,8 +666,8 @@ function cajaMejorar(){
     ${['criadero','hacienda'].includes(C.plan)?`<div class="chips" style="margin-bottom:12px"><button class="chip ${!C.anual?'on':''}" data-mejoraranual="0">Mensual</button><button class="chip ${C.anual?'on':''}" data-mejoraranual="1">Anual · 2 meses gratis</button></div>`:''}
     ${bloquePago(cop(val),C.anual?'un solo pago por 12 meses':p.pago_unico?'la publicación dura 60 días':'mensual','<input type="file" hidden data-renovar accept="image/*,application/pdf">')}</div>`;
 }
-function prevFotos(){const P=S.pub,L=[...(P.fotosEx||[]).map(r=>({url:fotoUrl(r)})),...P.fotos.map(f=>({url:URL.createObjectURL(f)}))];
-  return L.map((f,i)=>`<div class="pf"><img src="${esc(f.url)}" alt="">${i===0?'<span class="pf-p">Principal</span>':''}<button type="button" class="arch-x" data-quitarfoto="${i}" aria-label="Quitar foto">✕</button></div>`).join('')}
+function prevFotos(){const L=(S.pub.lista||[]).map(x=>({url:x.ex?fotoUrl(x.ex):URL.createObjectURL(x.f)}));
+  return L.map((f,i)=>`<div class="pf"><img src="${esc(f.url)}" alt="">${i===0?'<span class="pf-p">Principal</span>':`<button type="button" class="pf-star" data-fotoprincipal="${i}" title="Poner como principal">⭐</button>`}<button type="button" class="arch-x" data-quitarfoto="${i}" aria-label="Quitar foto">✕</button></div>`).join('')+(L.length?`<div class="pf-cont">${L.length}/8</div>`:'')}
 /* guarda lo que la persona ya escribió, para no perderlo cuando la pantalla se vuelve a dibujar */
 function guardarFormPub(){const f=$('#fpub');if(!f)return;const P=S.pub,V=P.vals={},fd=new FormData(f);
   ['t','sexo','cant','precio','unidad','desc','otra','aptotra'].forEach(k=>{if(f.elements[k])V[k]=f.elements[k].value});
@@ -692,6 +692,11 @@ function vPublicar(v,pl){
   const sel=(v1,v2)=>v1===v2?'selected':'';
   return `<div class="h-dash"><h2>${ed?'Editar publicación':'Nueva publicación'}</h2></div><form id="fpub" class="caja">
     ${paso(1,'Especie o categoría',`<select class="campo" id="pcat" ${ed?'disabled':''}>${Object.entries(GRUPOS).map(([g,gn])=>`<optgroup label="${gn}">${CATS.filter(c=>c.grupo===g&&c.activa&&(!permit||permit.includes(c.id)||c.id===P.cat)).map(c=>`<option value="${c.id}" ${P.cat===c.id?'selected':''} ${['no_habilitada','prohibida'].includes(c.estado_legal)?'disabled':''}>${c.emoji} ${esc(c.nombre)}${c.estado_legal==='revision'?' (con revisión)':''}</option>`).join('')}</optgroup>`).join('')}</select>${ed?'<small>La categoría no se puede cambiar al editar. Si te equivocaste, elimina la publicación y créala de nuevo.</small>':''}`)}
+    <div class="paso-pub paso-fotos"><div class="num">📸</div><div style="flex:1"><label class="lbl">Fotos y video del ejemplar</label><small style="display:block;margin:-4px 0 10px;color:var(--gris)">Sube fotos <b>reales</b> del animal que vendes (hasta 8). La primera es la foto principal: toca ⭐ en otra para ponerla de primera.</small>
+      <label class="subir-grande"><input type="file" hidden id="pfotos" accept="image/*" multiple><span class="sg-ic">📷</span><b>Toca aquí para subir las fotos del ejemplar</b><small>JPG o PNG · máximo 10 MB cada una · se marcan con el logo de La Cría</small></label>
+      <div class="prev-fotos" id="prevf">${prevFotos()}</div>
+      <div class="video-box">${P.video||P.videoEx?`<div class="arch"><div class="arch-mini"><span>🎬</span></div><div class="arch-info"><b>${esc(P.video?P.video.name:'Video del ejemplar')}</b><small>${P.video?pesoTxt(P.video.size):'Ya publicado'}</small></div><button type="button" class="arch-x" data-quitarvideo aria-label="Quitar video">✕</button></div>`:`<label class="link" style="cursor:pointer;font-size:14.5px">🎬 Agregar un video corto (opcional, máximo 50 MB)<input type="file" hidden accept="video/*" data-pvideo></label>`}</div>
+    </div></div>
     ${paso(2,'Raza o variedad',`<select class="campo" id="praza"><option value="">Sin definir / no aplica</option>${(RAZAS[cat.id]||[]).map(r=>`<option ${P.raza===r?'selected':''}>${esc(r)}</option>`).join('')}${P.raza&&P.raza!=='__otra'&&!(RAZAS[cat.id]||[]).includes(P.raza)?`<option selected>${esc(P.raza)}</option>`:''}<option value="__otra" ${P.raza==='__otra'?'selected':''}>Otra raza o variedad…</option></select>${P.raza==='__otra'?`<input class="campo" name="otra" style="margin-top:6px" placeholder="Escribe la raza" value="${esc(V.otra||'')}"><small>La enviaremos a revisión para agregarla al catálogo.</small>`:''}`)}
     ${paso(3,'Tipo de publicación',`<div class="chips">${tipos.map(x=>`<button type="button" class="chip ${P.tipo===x?'on':''}" data-ptipo="${x}">${TIPOS[x]}</button>`).join('')}</div>`)}
     ${paso(4,'Finalidad del ejemplar',adop?`<input type="hidden" name="prop" value="a"><div class="aviso" style="margin:0;background:#F3EAF6;border-color:#DCC7E4">💜 Este animal se publica <b>en adopción</b>.</div>`
@@ -705,7 +710,7 @@ function vPublicar(v,pl){
         <div class="f"><label>Precio (COP)</label><input class="campo" name="precio" type="number" placeholder="Vacío = a consultar" value="${esc(V.precio||'')}"></div><div class="f"><label>Precio por</label><select class="campo" name="unidad"><option value="">Ejemplar</option>${['por animal','por kg en pie','por lote'].map(x=>`<option ${sel(V.unidad,x)}>${x}</option>`).join('')}</select></div>`}
       ${camposDe(cat.id).concat(adop?['Esterilizado','Carácter']:[]).map(k=>`<div class="f"><label>${esc(k)}</label><input class="campo" data-k="${esc(k)}" value="${esc(at[k]||'')}"></div>`).join('')}
       <div class="f full"><label>Descripción</label><textarea class="campo" name="desc" rows="4" maxlength="2000">${esc(V.desc||'')}</textarea></div>
-      <div class="f full"><label>Fotos (hasta 8)</label><label class="subir" style="display:block">⬆ Elegir fotos<input type="file" hidden id="pfotos" accept="image/*" multiple></label><div class="prev-fotos" id="prevf">${prevFotos()}</div><small>🔒 Tus fotos nuevas se marcan automáticamente con el logo de La Cría.</small></div></div>`)}
+</div>`)}
     ${paso(7,'Información de los padres',`<div class="padres-g">${cajaPadre('padre')}${cajaPadre('madre')}</div>`,'Opcional. Si los tienes, agrega la foto y los datos del padre y de la madre. Se mostrarán en tu publicación como información declarada por ti.')}
     ${paso(8,'Documentos que entregas',`<div class="chips">${docsReq(cat.id).concat(['Contrato de compraventa','Exámenes']).map(d=>`<label class="chip chk-chip"><input type="checkbox" name="docs" value="${esc(d)}" ${docs.includes(d)?'checked':''}> ${esc(d)}</label>`).join('')}</div>`)}
     ${ed?'':paso(9,'Revisión',cat.estado_legal==='revision'?`<div class="aviso" style="margin:0">⚖️ <b>${esc(cat.nombre)}</b> requiere revisión: tu publicación aparecerá cuando el equipo la apruebe.</div>`:'<div class="aviso" style="margin:0;background:#EEF5F0;border-color:#C8DFCF">✓ Tu publicación aparece de inmediato.</div>')}
@@ -715,7 +720,7 @@ async function editarPublicacion(id){
   const {data:p,error}=await sb.from('publicaciones').select('*').eq('id',id).single(); if(error){err(error);return}
   const apts=APTITUDES[p.categoria_id]||[], pad=p.padres||{};
   const conv=x=>({nombre:x&&x.nombre||'',raza:x&&x.raza||'',color:x&&x.color||'',registro:x&&x.registro||'',fotoEx:x&&x.foto||null});
-  S.pub={cat:p.categoria_id,raza:p.raza||'',tipo:p.tipo,fotos:[],fotosEx:(p.fotos||[]).slice(),edit:p.id,
+  S.pub={cat:p.categoria_id,raza:p.raza||'',tipo:p.tipo,lista:(p.fotos||[]).map(ex=>({ex})),video:null,videoEx:p.video||null,edit:p.id,
     padres:{padre:conv(pad.padre),madre:conv(pad.madre)},
     vals:{t:p.titulo,sexo:p.sexo,cant:p.cantidad,precio:p.precio??'',unidad:p.unidad||'',desc:p.descripcion||'',props:p.finalidades||[],
       apt:(p.aptitudes||[]).filter(x=>apts.includes(x)).concat((p.aptitudes||[]).some(x=>!apts.includes(x))?['__otra']:[]),
@@ -727,11 +732,12 @@ async function publicar(form){
   const v=S.yo, P=S.pub, V=P.vals, ed=!!P.edit;
   const props=V.props||[]; if(!props.length){toast('Elige al menos una finalidad del ejemplar');return}
   if(!(V.t||'').trim()){toast('Escribe un título');return}
-  if(!P.fotos.length&&!(P.fotosEx||[]).length){toast('Sube al menos una foto real del animal');return}
+  if(!(P.lista||[]).length){toast('Sube al menos una foto real del animal');const z=$('.paso-fotos');z&&z.scrollIntoView({behavior:'smooth',block:'center'});return}
   const apt=(V.apt||[]).filter(x=>x!=='__otra').concat((V.apt||[]).includes('__otra')?String(V.aptotra||'').split(',').map(x=>x.trim()).filter(Boolean):[]);
   const btn=$('#pubbtn'); btn.disabled=true; btn.textContent='Subiendo fotos…';
   try{
-    const fotos=(P.fotosEx||[]).slice(); for(const f of P.fotos.slice(0,8-fotos.length)) fotos.push(await subir('fotos',v.id,f));
+    const fotos=[]; for(const x of P.lista.slice(0,8)) fotos.push(x.ex?x.ex:await subir('fotos',v.id,x.f));
+    let video=P.videoEx||null; if(P.video){btn.textContent='Subiendo video…';video=await subir('fotos',v.id,P.video,true)}
     const padres={};
     for(const q of ['padre','madre']){const d=P.padres[q]||{};let foto=d.fotoEx||null;if(d.foto)foto=await subir('fotos',v.id,await reducirImagen(d.foto,1200),true);
       const o={foto,nombre:(d.nombre||'').trim(),raza:(d.raza||'').trim(),color:(d.color||'').trim(),registro:(d.registro||'').trim()};
@@ -739,7 +745,7 @@ async function publicar(form){
     let raza=P.raza||null;
     if(P.raza==='__otra'){raza=(V.otra||'').trim()||null; if(raza) await sb.from('razas_propuestas').insert({categoria_id:P.cat,nombre:raza,propuesta_por:v.id});}
     const at={};Object.entries(V.at||{}).forEach(([k,x])=>{if(String(x).trim())at[k]=String(x).trim()});
-    const reg={raza,tipo:P.tipo,sexo:V.sexo,finalidades:props,aptitudes:apt,padres,titulo:V.t.trim(),descripcion:V.desc,precio:V.precio!==''&&V.precio!=null?Number(V.precio):null,unidad:V.unidad||null,cantidad:Number(V.cant||1),atributos:at,documentos:V.docs||[],fotos};
+    const reg={video,raza,tipo:P.tipo,sexo:V.sexo,finalidades:props,aptitudes:apt,padres,titulo:V.t.trim(),descripcion:V.desc,precio:V.precio!==''&&V.precio!=null?Number(V.precio):null,unidad:V.unidad||null,cantidad:Number(V.cant||1),atributos:at,documentos:V.docs||[],fotos};
     const {error}=ed?await sb.from('publicaciones').update(reg).eq('id',P.edit):await sb.from('publicaciones').insert({...reg,vendedor_id:v.id,categoria_id:P.cat});
     if(error) throw error;
     const cat=P.cat; S.pub=pubVacia(cat); S.sub='pubs'; render();
@@ -925,7 +931,9 @@ document.addEventListener('click', async e=>{
   if(d.regpaso){const dir=Number(d.regpaso);if(dir>0&&!guardarPasoReg())return;if(dir>0&&S.reg.paso===4){await enviarRegistro();return}let np=Math.max(1,Math.min(4,S.reg.paso+dir));if(np===2&&esGratis(planDe(S.reg.plan)))np=dir>0?3:1;S.reg.paso=np;render();window.scrollTo({top:0});return}
   // panel vendedor
   if(d.quitararch){guardarPasoRegSilencioso();const l=listaArch(d.quitararch).slice();l.splice(Number(d.i),1);if(l.length)S.reg.arch[d.quitararch]=Array.isArray(S.reg.arch[d.quitararch])?l:l[0];else delete S.reg.arch[d.quitararch];render();return}
-  if(d.quitarfoto){const i=Number(d.quitarfoto),ne=(S.pub.fotosEx||[]).length;if(i<ne)S.pub.fotosEx.splice(i,1);else S.pub.fotos.splice(i-ne,1);$('#prevf').innerHTML=prevFotos();return}
+  if(d.quitarfoto){S.pub.lista.splice(Number(d.quitarfoto),1);$('#prevf').innerHTML=prevFotos();return}
+  if(d.fotoprincipal){const l=S.pub.lista,[m]=l.splice(Number(d.fotoprincipal),1);l.unshift(m);$('#prevf').innerHTML=prevFotos();toast('⭐ Foto principal cambiada');return}
+  if(d.quitarvideo!==undefined){guardarFormPub();S.pub.video=null;S.pub.videoEx=null;render();return}
   if(d.quitarpadre){guardarFormPub();const q=S.pub.padres[d.quitarpadre];q.foto=null;q.fotoEx=null;render();return}
   if(d.cancelarpub!==undefined){S.pub=pubVacia(S.pub.cat);S.sub='pubs';render();return}
   if(d.pubeditar){await editarPublicacion(Number(d.pubeditar));return}
@@ -1044,8 +1052,9 @@ document.addEventListener('change',async e=>{
   if(t.id==='pcat'){guardarFormPub();S.pub={...S.pub,cat:t.value,raza:'',tipo:(catDe(t.value).tipos||['ind'])[0]};S.pub.vals.apt=[];S.pub.vals.aptotra='';S.pub.vals.at={};render()}
   if(t.id==='praza'){guardarFormPub();S.pub.raza=t.value;render()}
   if(t.id==='aptotrachk'){const i=$('#aptotra');if(i){i.style.display=t.checked?'':'none';if(t.checked)i.focus()}}
+  if(d.pvideo!==undefined){const f=t.files[0];if(!f)return;if(!f.type.startsWith('video/')){toast('Ese archivo no es un video');return}if(f.size>50*1048576){toast('El video pesa '+pesoTxt(f.size)+'. El máximo es 50 MB');return}guardarFormPub();S.pub.video=f;render();return}
   if(d.fotopadre){const f=t.files[0];if(!f)return;const m=validarArchivo(f,true);if(m){toast('No se pudo subir: '+m);return}guardarFormPub();S.pub.padres[d.fotopadre].foto=f;render();return}
-  if(t.id==='pfotos'){const malos=[];for(const f of t.files){const m=validarArchivo(f,true);if(m)malos.push(m);else if(S.pub.fotos.length+(S.pub.fotosEx||[]).length<8)S.pub.fotos.push(f);else malos.push(f.name+' (máximo 8 fotos)')}if(malos.length)toast('No se pudo subir: '+malos.join(', '));$('#prevf').innerHTML=prevFotos();t.value=''}
+  if(t.id==='pfotos'){const malos=[];for(const f of t.files){const m=validarArchivo(f,true);if(m)malos.push(m);else if(S.pub.lista.length<8)S.pub.lista.push({f});else malos.push(f.name+' (máximo 8 fotos)')}if(malos.length)toast('No se pudo subir: '+malos.join(', '));$('#prevf').innerHTML=prevFotos();t.value=''}
   if(d.arch){const k=d.arch,multi=t.multiple,malos=[];let l=multi?listaArch(k).slice():[];for(const f of t.files){const m=validarArchivo(f,k==='fotos');if(m){malos.push(m);continue}if(multi&&l.length>=(ARCH_MAX[k]||6)){malos.push(f.name+' (máximo '+(ARCH_MAX[k]||6)+')');continue}if(multi)l.push(f);else l=[f]}
     if(malos.length)toast('No se pudo subir: '+malos.join(', '));if(!l.length)return;guardarPasoRegSilencioso();S.reg.arch[k]=multi?l:l[0];render()}
   if(d.banimg!==undefined){const f=t.files[0];if(!f)return;const m=validarArchivo(f,true);if(m){toast('No se pudo subir: '+m);return}S.banImg=f;const pv=$('#banform .ban-prev');if(pv)pv.innerHTML=`<img src="${URL.createObjectURL(f)}" alt="">`;t.closest('label').firstChild.textContent='⬆ Cambiar imagen';return}
