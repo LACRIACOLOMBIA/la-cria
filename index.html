@@ -8,7 +8,7 @@
 <link rel="icon" href="logo.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,800&family=DM+Sans:wght@400;500;600;700&family=Rye&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css">
+<link rel="stylesheet" href="estilos.css?v=20261124c">
 <style>
 .cargando{padding:80px 20px;text-align:center;color:var(--gris)}
 .spin{width:34px;height:34px;border:4px solid var(--crema2);border-top-color:var(--terra);border-radius:50%;animation:g 1s linear infinite;margin:0 auto 12px}
@@ -99,6 +99,10 @@
 .chat-nota{display:block;padding:0 14px 10px;color:var(--gris);font-size:11.5px}
 @media(max-width:760px){.chat{grid-template-columns:1fr;height:75vh}.chat.con-chat .chat-lista{display:none}.chat:not(.con-chat) .chat-panel{display:none}.planes-anual{grid-template-columns:1fr!important}}
 .sancion-box{margin-top:16px;padding:12px 14px;border:1px solid #EBC4C4;background:#FDF5F5;border-radius:14px}.sancion-box b{display:block}.sancion-box small{display:block;color:var(--gris);font-size:13px}
+.pago-qr{max-width:360px;padding:14px!important}.pago-qr img{width:320px!important;height:320px!important;max-width:78vw!important;max-height:78vw!important;image-rendering:pixelated}
+@media(max-width:560px){.pago-card{padding:12px!important}.pago-qr{max-width:none;width:100%;min-width:0!important;box-sizing:border-box;margin:0 auto}.pago-qr img{width:100%!important;height:auto!important;max-width:300px!important;max-height:none!important;aspect-ratio:1/1}}.qr-zoom{border:0;background:none;padding:0;cursor:zoom-in;line-height:0}
+.pago-card.con-qr{grid-template-columns:1fr!important;text-align:center}.pago-card.con-qr .pago-datos{align-items:center}.pago-card.con-qr .pago-datos div{justify-content:center}
+.pago-card.con-qr .pago-qr img{width:100%!important;max-width:340px!important;height:auto!important;max-height:none!important}
 </style>
 </head>
 <body>
@@ -130,8 +134,8 @@
 <button class="ayuda-flot" data-soporte>🛟 Ayuda</button>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
-<script src="legales.js"></script>
-<script src="app.js"></script>
+<script src="config.js?v=20261124c"></script>
+<script src="legales.js?v=20261124c"></script>
+<script src="app.js?v=20261124c"></script>
 </body>
 </html>

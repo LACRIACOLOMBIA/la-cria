@@ -560,7 +560,7 @@ const pesoTxt=b=>b>1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/
 function validarArchivo(f,soloImg){const img=f.type.startsWith('image/'),pdf=f.type==='application/pdf';if(!(img||(!soloImg&&pdf)))return f.name+' (formato no permitido)';if(f.size>10*1048576)return f.name+' (pesa '+pesoTxt(f.size)+', máximo 10 MB)';return ''}
 function bloquePago(valor,detalle,clave,listo){
   const qr=CONFIG.qr_breb?fotoUrl(CONFIG.qr_breb):'';
-  return `<div class="pago-card">${qr?`<div class="pago-qr"><img src="${esc(qr)}" alt="Código QR Bre-B de La Cría"><small>Escanéalo con la app de tu banco</small></div>`:''}
+  return `<div class="pago-card ${qr?'con-qr':''}">${qr?`<div class="pago-qr" style="width:100%;max-width:380px;margin:0 auto;box-sizing:border-box"><button type="button" class="qr-zoom" data-verqr="${esc(qr)}" aria-label="Ver QR grande" style="width:100%"><img src="${esc(qr)}" alt="Código QR Bre-B de La Cría" style="width:100%;max-width:340px;height:auto;aspect-ratio:1/1;display:block;margin:0 auto"></button><small>Escanéalo con la app de tu banco</small><a class="link" style="font-size:13px" href="${esc(qr)}" target="_blank" rel="noopener" download="qr-pagos-la-cria.png">⬇ Descargar QR</a><small style="font-size:11.5px">¿Pagas desde este mismo celular? Descárgalo y en tu banco elige “pagar con QR desde la galería”.</small></div>`:''}
     <div class="pago-datos"><div class="pago-fila"><small>Llave Bre-B</small><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b class="pago-llave">${esc(CONFIG.llave_breb||'')}</b><button class="btn btn-o btn-s" data-copiarllave>Copiar</button></div></div>
       <div class="pago-fila"><small>A nombre de</small><b>${esc(CONFIG.titular_breb||'La Cría')}</b></div>
       <div class="pago-fila"><small>Valor a pagar</small><b class="pago-valor">${valor}</b>${detalle?`<span style="font-size:13px;color:var(--gris)">${detalle}</span>`:''}</div></div></div>
@@ -880,6 +880,7 @@ document.addEventListener('click', async e=>{
   const b=e.target.closest('button,a[data-legal],[data-vfoto]'); if(!b) return; const d=b.dataset;
   try{
   if(d.cerrar!==undefined){cerrar();return}
+  if(d.verqr){modal(`<div style="text-align:center"><h3>Escanea para pagar</h3><img src="${esc(d.verqr)}" alt="QR Bre-B" style="width:min(80vw,420px);margin-top:10px;border-radius:16px"><p style="margin-top:8px"><a class="lk" href="${esc(d.verqr)}" target="_blank" rel="noopener" download>⬇ Descargar QR</a></p></div>`);return}
   if(d.escribir){await abrirChatDe(Number(d.escribir));return}
   if(d.chat){S.chat=Number(d.chat);await render();bajarChat();$('#chattxt')&&$('#chattxt').focus();return}
   if(d.chatcerrar!==undefined){S.chat=null;render();return}
